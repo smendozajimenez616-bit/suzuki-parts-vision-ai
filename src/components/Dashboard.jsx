@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import API_URL from "../services/api";
 
 function Dashboard({ status }) {
   const [resumen, setResumen] = useState({
@@ -17,7 +18,7 @@ function Dashboard({ status }) {
         setError("");
 
         const response = await fetch(
-          "http://localhost:3001/api/inventario/resumen"
+          `${API_URL}/api/inventario/resumen`
         );
 
         const data = await response.json();
@@ -31,11 +32,18 @@ function Dashboard({ status }) {
 
         setResumen({
           total: Number(data.datos?.total || 0),
-          sinExistencias: Number(data.datos?.sinExistencias || 0),
-          existenciasBajas: Number(data.datos?.existenciasBajas || 0),
+          sinExistencias: Number(
+            data.datos?.sinExistencias || 0
+          ),
+          existenciasBajas: Number(
+            data.datos?.existenciasBajas || 0
+          ),
         });
       } catch (error) {
-        console.error("Error al cargar el resumen:", error);
+        console.error(
+          "Error al cargar el resumen:",
+          error
+        );
 
         setError(
           error instanceof Error
@@ -55,7 +63,9 @@ function Dashboard({ status }) {
       <header className="topbar">
         <div>
           <h1>Bienvenido</h1>
-          <p>Sistema inteligente de refacciones Suzuki</p>
+          <p>
+            Sistema inteligente de refacciones Suzuki
+          </p>
         </div>
 
         <div className="user-card">
@@ -68,30 +78,44 @@ function Dashboard({ status }) {
         </div>
       </header>
 
-      {error && <p className="error-message">{error}</p>}
+      {error && (
+        <p className="error-message">{error}</p>
+      )}
 
       <section className="stats-grid">
         <article className="stat-card">
           <span>Inventario</span>
-          <strong>{cargando ? "..." : resumen.total}</strong>
+          <strong>
+            {cargando ? "..." : resumen.total}
+          </strong>
           <small>Refacciones cargadas</small>
         </article>
 
         <article className="stat-card">
           <span>Imágenes enviadas</span>
-          <strong>{status === "success" ? 1 : 0}</strong>
+          <strong>
+            {status === "success" ? 1 : 0}
+          </strong>
           <small>Recibidas por el backend</small>
         </article>
 
         <article className="stat-card">
           <span>Existencias bajas</span>
-          <strong>{cargando ? "..." : resumen.existenciasBajas}</strong>
+          <strong>
+            {cargando
+              ? "..."
+              : resumen.existenciasBajas}
+          </strong>
           <small>Requieren atención</small>
         </article>
 
         <article className="stat-card">
           <span>Sin existencias</span>
-          <strong>{cargando ? "..." : resumen.sinExistencias}</strong>
+          <strong>
+            {cargando
+              ? "..."
+              : resumen.sinExistencias}
+          </strong>
           <small>Sin stock disponible</small>
         </article>
       </section>

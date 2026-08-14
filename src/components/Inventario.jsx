@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-
-const API_URL = "http://localhost:3001";
+import API_URL from "../services/api";
 
 const initialForm = {
   numeroParte: "",

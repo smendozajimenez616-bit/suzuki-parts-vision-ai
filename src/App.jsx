@@ -3,6 +3,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import Inventario from "./components/Inventario";
 import Barcode from "./components/Barcode";
+import { identificarPieza } from "./services/visionService";
 import "./App.css";
 
 function App() {
@@ -15,8 +16,6 @@ function App() {
   const [selectedFileName, setSelectedFileName] = useState("");
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
-  const [selectedMatch, setSelectedMatch] =
-  useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
@@ -72,7 +71,6 @@ function App() {
     setSelectedImage(imageUrl);
     setSelectedFileName(file.name);
     setResult(null);
-    setSelectedMatch(null);
     setErrorMessage("");
     setStatus("ready");
 
@@ -89,21 +87,9 @@ function App() {
     setErrorMessage("");
 
     try {
-      const formData = new FormData();
+      const data = await identificarPieza(selectedFile);
 
-      formData.append("image", selectedFile);
-
-      const response = await fetch(
-        "http://localhost:3001/api/identificar",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
+      if (!data.success) {
         throw new Error(
           data.mensaje ||
             "El backend no pudo procesar la imagen."
@@ -112,12 +98,6 @@ function App() {
 
       const inventoryPart = data.inventario || null;
       const analysis = data.analisis || {};
-      const matches = Array.isArray(
-        data.coincidenciasInventario
-      )
-        ? data.coincidenciasInventario
-        : [];
-
 
       setResult({
         description:
@@ -173,12 +153,7 @@ function App() {
         inventoryFound:
           Boolean(data.inventarioEncontrado),
 
-    inventory: inventoryPart,
-
-matches,
-
-selectedMatch:
-  inventoryPart || matches[0] || null,
+        inventory: inventoryPart,
 
         fileName:
           data.archivo?.nombre ||
@@ -200,9 +175,6 @@ selectedMatch:
           "Proceso completado correctamente.",
       });
 
-      setSelectedMatch(
-        inventoryPart || matches[0] || null
-      );
       setStatus("success");
     } catch (error) {
       console.error(
@@ -233,7 +205,6 @@ selectedMatch:
     setSelectedImage(null);
     setSelectedFileName("");
     setResult(null);
-    setSelectedMatch(null);
     setErrorMessage("");
     setStatus("idle");
   }
@@ -506,8 +477,8 @@ selectedMatch:
                       <dt>Número de parte</dt>
                       <dd>
                         <strong>
-                          {selectedMatch?.numeroParte ||
-                            "—"}
+                          {result.inventory
+                            .numeroParte || "—"}
                         </strong>
                       </dd>
                     </div>
@@ -517,89 +488,58 @@ selectedMatch:
                         Descripción registrada
                       </dt>
                       <dd>
-                        {selectedMatch?.descripcion || "--"}
+                        {result.inventory
+                          .descripcion || "—"}
                       </dd>
                     </div>
 
                     <div>
-                      <dt>Modelo registrado</dt>  
+                      <dt>Modelo registrado</dt>
                       <dd>
-                       {selectedMatch?.modelo || "--"}
+                        {result.inventory
+                          .modelo || "—"}
                       </dd>
                     </div>
 
                     <div>
                       <dt>Año registrado</dt>
                       <dd>
-                      {selectedMatch?.anio || "--"}
+                        {result.inventory.anio ||
+                          "—"}
                       </dd>
                     </div>
 
                     <div>
                       <dt>Existencias</dt>
                       <dd>
-                    {selectedMatch?.existencias ?? 0}
+                        {result.inventory
+                          .existencias ?? 0}
                       </dd>
                     </div>
 
                     <div>
                       <dt>Ubicación</dt>
                       <dd>
-                        {selectedMatch?.ubicacion || "--"}
+                        {result.inventory
+                          .ubicacion || "—"}
                       </dd>
                     </div>
 
                     <div>
                       <dt>Precio</dt>
                       <dd>
-                       {formatPrice(selectedMatch?.precio)} 
+                        {formatPrice(
+                          result.inventory.precio
+                        )}
                       </dd>
                     </div>
                   </dl>
-{Array.isArray(result.matches) &&
-                result.matches.length > 0 && (
-  <div className="matches-section">
-    <h4>Posibles coincidencias</h4>
 
-    <div className="matches-grid">
-      {result.matches.map((item) => (
-        <button
-          key={`${item.id || item.numeroParte}-${item.numeroParte}`}
-          type="button"
-          className={
-            selectedMatch?.numeroParte ===
-            item.numeroParte
-              ? "match-card active"
-              : "match-card"
-          }
-          onClick={() =>
-            setSelectedMatch(item)
-          }
-        >
-          <strong>
-            {item.numeroParte}
-          </strong>
-
-          <span>
-            {item.descripcion}
-          </span>
-
-          <small>
-            Stock:
-            {" "}
-            {item.existencias}
-          </small>
-        </button>
-      ))}
-    </div>
-  </div>
-)}
                   <div className="barcode-section">
                     <h4>Código de barras</h4>
 
                     <Barcode
-                      value={selectedMatch?.numeroParte ||
- result.inventory.numeroParte}
+                      value={result.inventory.numeroParte}
                     />
 
                     <button
