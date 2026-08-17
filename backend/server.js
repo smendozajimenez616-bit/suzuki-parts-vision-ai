@@ -26,12 +26,27 @@ const PORT =
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5175",
-      "https://frabjous-jelly-01adb7.netlify.app",
-    ],
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        "https://frabjous-jelly-01adb7.netlify.app",
+      ];
+
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      if (/^http:\/\/localhost:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(
+        new Error(`Origen no permitido por CORS: ${origin}`)
+      );
+    },
   })
 );
 
