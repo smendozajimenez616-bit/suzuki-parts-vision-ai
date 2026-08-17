@@ -4,6 +4,7 @@ import Dashboard from "./components/Dashboard";
 import Inventario from "./components/Inventario";
 import Barcode from "./components/Barcode";
 import { identificarPieza } from "./services/visionService";
+import API_URL from "./services/api";
 import "./App.css";
 
 function App() {
@@ -17,6 +18,13 @@ function App() {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+
+  const [clienteNombre, setClienteNombre] = useState("");
+  const [clienteTelefono, setClienteTelefono] = useState("");
+  const [cantidadCotizacion, setCantidadCotizacion] = useState(1);
+  const [creandoCotizacion, setCreandoCotizacion] = useState(false);
+  const [cotizacionError, setCotizacionError] = useState("");
+  const [cotizacionCreada, setCotizacionCreada] = useState(null);
 
   useEffect(() => {
     return () => {
@@ -71,6 +79,11 @@ function App() {
     setSelectedImage(imageUrl);
     setSelectedFileName(file.name);
     setResult(null);
+    setClienteNombre("");
+    setClienteTelefono("");
+    setCantidadCotizacion(1);
+    setCotizacionError("");
+    setCotizacionCreada(null);
     setErrorMessage("");
     setStatus("ready");
 
@@ -84,6 +97,8 @@ function App() {
 
     setStatus("analyzing");
     setResult(null);
+    setCotizacionError("");
+    setCotizacionCreada(null);
     setErrorMessage("");
 
     try {
@@ -192,6 +207,74 @@ function App() {
     }
   }
 
+  async function handleCrearCotizacion() {
+    if (!result?.inventory) {
+      setCotizacionError(
+        "Primero debe existir una refacción identificada en el inventario."
+      );
+      return;
+    }
+
+    const nombre = clienteNombre.trim();
+    const telefono = clienteTelefono.trim();
+    const cantidad = Math.max(1, Number(cantidadCotizacion) || 1);
+
+    if (!nombre || !telefono) {
+      setCotizacionError(
+        "Escribe el nombre y el teléfono del cliente."
+      );
+      return;
+    }
+
+    setCreandoCotizacion(true);
+    setCotizacionError("");
+    setCotizacionCreada(null);
+
+    try {
+      const response = await fetch(`${API_URL}/api/cotizaciones`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombreCliente: nombre,
+          telefonoCliente: telefono,
+          items: [
+            {
+              numeroParte: result.inventory.numeroParte,
+              descripcion:
+                result.inventory.descripcion ||
+                result.description ||
+                "",
+              cantidad,
+              precioUnitario: Number(result.inventory.precio || 0),
+            },
+          ],
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.mensaje || "No se pudo crear la cotización."
+        );
+      }
+
+      setCotizacionCreada(data.cotizacion);
+    } catch (error) {
+      console.error("Error al crear cotización:", error);
+
+      setCotizacionError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo crear la cotización."
+      );
+    } finally {
+      setCreandoCotizacion(false);
+    }
+  }
+
   function handleClearImage() {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(
@@ -205,6 +288,11 @@ function App() {
     setSelectedImage(null);
     setSelectedFileName("");
     setResult(null);
+    setClienteNombre("");
+    setClienteTelefono("");
+    setCantidadCotizacion(1);
+    setCotizacionError("");
+    setCotizacionCreada(null);
     setErrorMessage("");
     setStatus("idle");
   }
@@ -564,6 +652,184 @@ function App() {
                     suficientemente parecida en
                     SQLite.
                   </p>
+                </div>
+              )}
+
+              {result.inventoryFound && result.inventory && (
+                <div
+                  className="inventory-match"
+                  style={{ marginTop: 18 }}
+                >
+                  <h4>Datos del cliente</h4>
+
+                  <p
+                    className="result-description"
+                    style={{ marginBottom: 16 }}
+                  >
+                    Captura los datos del cliente para generar la
+                    cotización de esta refacción.
+                  </p>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    <label>
+                      Nombre del cliente
+
+                      <input
+                        type="text"
+                        value={clienteNombre}
+                        onChange={(event) =>
+                          setClienteNombre(event.target.value)
+                        }
+                        placeholder="Nombre completo"
+                        disabled={creandoCotizacion}
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+
+                    <label>
+                      Teléfono
+
+                      <input
+                        type="tel"
+                        value={clienteTelefono}
+                        onChange={(event) =>
+                          setClienteTelefono(event.target.value)
+                        }
+                        placeholder="Ejemplo: 6141234567"
+                        disabled={creandoCotizacion}
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+
+                    <label>
+                      Cantidad
+
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={cantidadCotizacion}
+                        onChange={(event) =>
+                          setCantidadCotizacion(event.target.value)
+                        }
+                        disabled={creandoCotizacion}
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={handleCrearCotizacion}
+                      disabled={creandoCotizacion}
+                    >
+                      {creandoCotizacion
+                        ? "Creando cotización..."
+                        : "Crear cotización"}
+                    </button>
+
+                    <span>
+                      Total estimado:{" "}
+                      <strong>
+                        {formatPrice(
+                          Number(result.inventory.precio || 0) *
+                            Math.max(
+                              1,
+                              Number(cantidadCotizacion) || 1
+                            )
+                        )}
+                      </strong>
+                    </span>
+                  </div>
+
+                  {cotizacionError && (
+                    <p
+                      className="error-message"
+                      style={{ marginTop: 14 }}
+                    >
+                      {cotizacionError}
+                    </p>
+                  )}
+
+                  {cotizacionCreada && (
+                    <div
+                      className="analysis-extra"
+                      style={{ marginTop: 16 }}
+                    >
+                      <h4>Cotización creada</h4>
+
+                      <p>
+                        Folio:{" "}
+                        <strong>{cotizacionCreada.folio}</strong>
+                      </p>
+
+                      <p>
+                        Cliente:{" "}
+                        <strong>
+                          {cotizacionCreada.cliente?.nombre ||
+                            clienteNombre}
+                        </strong>
+                      </p>
+
+                      <p>
+                        Teléfono:{" "}
+                        {cotizacionCreada.cliente?.telefono ||
+                          clienteTelefono}
+                      </p>
+
+                      <p>
+                        Estado:{" "}
+                        <strong>{cotizacionCreada.estado}</strong>
+                      </p>
+
+                      <p>
+                        Total:{" "}
+                        <strong>
+                          {formatPrice(cotizacionCreada.total)}
+                        </strong>
+                      </p>
+
+                      <p>
+                        La pieza quedó registrada automáticamente
+                        en el historial permanente.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

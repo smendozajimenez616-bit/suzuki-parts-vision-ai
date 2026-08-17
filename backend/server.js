@@ -1,4 +1,4 @@
-  const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const multer = require("multer");
@@ -16,7 +16,9 @@ dotenv.config();
 const db = require("./database");
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3001;
+
+const PORT =
+  Number(process.env.PORT) || 3001;
 
 // ==========================================
 // CONFIGURACIÓN GENERAL
@@ -35,27 +37,96 @@ app.use(
 
 app.use(express.json());
 
-app.use("/api/inventario", inventarioRouter);
+app.use(
+  "/api/inventario",
+  inventarioRouter
+);
+
+// ==========================================
+// FUNCIONES GENERALES DE SQLITE
+// ==========================================
+
+function dbRun(sql, params = []) {
+  return new Promise(
+    (resolve, reject) => {
+      db.run(
+        sql,
+        params,
+        function handleRun(error) {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve({
+            lastID: this.lastID,
+            changes: this.changes,
+          });
+        }
+      );
+    }
+  );
+}
+
+function dbGet(sql, params = []) {
+  return new Promise(
+    (resolve, reject) => {
+      db.get(
+        sql,
+        params,
+        (error, row) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve(row || null);
+        }
+      );
+    }
+  );
+}
+
+function dbAll(sql, params = []) {
+  return new Promise(
+    (resolve, reject) => {
+      db.all(
+        sql,
+        params,
+        (error, rows) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve(rows || []);
+        }
+      );
+    }
+  );
+}
 
 // ==========================================
 // CLIENTE DE GEMINI
 // ==========================================
 
-// Se usa importación dinámica porque tu backend trabaja con CommonJS.
 let geminiClientPromise = null;
 
 async function getGeminiClient() {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error(
-      "No se encontró GEMINI_API_KEY en el archivo backend/.env."
+      "No se encontró GEMINI_API_KEY."
     );
   }
 
   if (!geminiClientPromise) {
-    geminiClientPromise = import("@google/genai").then(
+    geminiClientPromise = import(
+      "@google/genai"
+    ).then(
       ({ GoogleGenAI }) =>
         new GoogleGenAI({
-          apiKey: process.env.GEMINI_API_KEY,
+          apiKey:
+            process.env.GEMINI_API_KEY,
         })
     );
   }
@@ -67,43 +138,81 @@ async function getGeminiClient() {
 // CARPETA DE IMÁGENES
 // ==========================================
 
-const uploadsDirectory = path.join(__dirname, "uploads");
+const uploadsDirectory =
+  path.join(
+    __dirname,
+    "uploads"
+  );
 
-if (!fs.existsSync(uploadsDirectory)) {
-  fs.mkdirSync(uploadsDirectory, {
-    recursive: true,
-  });
+if (
+  !fs.existsSync(uploadsDirectory)
+) {
+  fs.mkdirSync(
+    uploadsDirectory,
+    {
+      recursive: true,
+    }
+  );
 }
 
 // ==========================================
-// CONFIGURACIÓN DE MULTER
+// MULTER PARA FOTOGRAFÍAS
 // ==========================================
 
-const storage = multer.diskStorage({
-  destination: (req, file, callback) => {
-    callback(null, uploadsDirectory);
-  },
+const storage =
+  multer.diskStorage({
+    destination: (
+      req,
+      file,
+      callback
+    ) => {
+      callback(
+        null,
+        uploadsDirectory
+      );
+    },
 
-  filename: (req, file, callback) => {
-    const extension = path.extname(file.originalname);
+    filename: (
+      req,
+      file,
+      callback
+    ) => {
+      const extension =
+        path.extname(
+          file.originalname
+        );
 
-    const generatedName = `${Date.now()}-${Math.round(
-      Math.random() * 1_000_000
-    )}${extension}`;
+      const generatedName =
+        `${Date.now()}-${Math.round(
+          Math.random() *
+            1_000_000
+        )}${extension}`;
 
-    callback(null, generatedName);
-  },
-});
+      callback(
+        null,
+        generatedName
+      );
+    },
+  });
 
 const upload = multer({
   storage,
 
   limits: {
-    fileSize: 10 * 1024 * 1024,
+    fileSize:
+      10 * 1024 * 1024,
   },
 
-  fileFilter: (req, file, callback) => {
-    if (!file.mimetype.startsWith("image/")) {
+  fileFilter: (
+    req,
+    file,
+    callback
+  ) => {
+    if (
+      !file.mimetype.startsWith(
+        "image/"
+      )
+    ) {
       callback(
         new Error(
           "El archivo seleccionado no es una imagen válida."
@@ -118,134 +227,31 @@ const upload = multer({
 });
 
 // ==========================================
-// FUNCIONES DE SQLITE
-// ==========================================
-
-function obtenerTodasLasRefacciones() {
-  return new Promise((resolve, reject) => {
-    db.all(
-      `
-      SELECT *
-      FROM refacciones
-      ORDER BY descripcion
-      `,
-      [],
-      (error, rows) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-
-        resolve(rows || []);
-      }
-    );
-  });
-}
-
-function normalizarTexto(valor) {
-  return String(valor || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function obtenerPalabras(valor) {
-  return normalizarTexto(valor)
-    .split(" ")
-    .filter((palabra) => palabra.length >= 3);
-}
-
-function calcularPuntuacion(refaccion, analisis) {
-  const textoRefaccion = normalizarTexto(
-    [
-      refaccion.numeroParte,
-      refaccion.descripcion,
-      refaccion.modelo,
-      refaccion.anio,
-      refaccion.ubicacion,
-    ].join(" ")
-  );
-
-  const camposAnalisis = [
-    analisis.nombrePieza,
-    analisis.descripcion,
-    analisis.modeloProbable,
-    analisis.anioProbable,
-    analisis.categoria,
-    analisis.posicion,
-  ];
-
-  const palabras = camposAnalisis.flatMap(obtenerPalabras);
-
-  let puntuacion = 0;
-
-  palabras.forEach((palabra) => {
-    if (textoRefaccion.includes(palabra)) {
-      puntuacion += 1;
-    }
-  });
-
-  if (
-    analisis.numeroParteVisible &&
-    normalizarTexto(refaccion.numeroParte) ===
-      normalizarTexto(analisis.numeroParteVisible)
-  ) {
-    puntuacion += 10;
-  }
-
-  return puntuacion;
-}
-
-async function buscarMejorCoincidencia(analisis) {
-  const refacciones = await obtenerTodasLasRefacciones();
-
-  if (refacciones.length === 0) {
-    return null;
-  }
-
-  const resultados = refacciones
-    .map((refaccion) => ({
-      refaccion,
-      puntuacion: calcularPuntuacion(
-        refaccion,
-        analisis
-      ),
-    }))
-    .sort(
-      (primero, segundo) =>
-        segundo.puntuacion - primero.puntuacion
-    );
-
-  const mejorResultado = resultados[0];
-
-  // Evita mostrar coincidencias demasiado débiles.
-  if (!mejorResultado || mejorResultado.puntuacion < 2) {
-    return null;
-  }
-
-  return {
-    ...mejorResultado.refaccion,
-    puntuacionCoincidencia:
-      mejorResultado.puntuacion,
-  };
-}
-
-// ==========================================
 // FUNCIONES DE GEMINI
 // ==========================================
 
-function limpiarRespuestaJson(texto) {
+function limpiarRespuestaJson(
+  texto
+) {
   return String(texto || "")
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
+    .replace(
+      /^```json\s*/i,
+      ""
+    )
+    .replace(
+      /^```\s*/i,
+      ""
+    )
+    .replace(
+      /\s*```$/i,
+      ""
+    )
     .trim();
 }
 
-function validarAnalisis(datos) {
+function validarAnalisis(
+  datos
+) {
   return {
     nombrePieza:
       datos.nombrePieza ||
@@ -256,41 +262,65 @@ function validarAnalisis(datos) {
       "No fue posible generar una descripción.",
 
     categoria:
-      datos.categoria || "Sin determinar",
+      datos.categoria ||
+      "Sin determinar",
 
     posicion:
-      datos.posicion || "Sin determinar",
+      datos.posicion ||
+      "Sin determinar",
 
     modeloProbable:
-      datos.modeloProbable || "Sin determinar",
+      datos.modeloProbable ||
+      "Sin determinar",
 
     anioProbable:
-      datos.anioProbable || "Sin determinar",
+      datos.anioProbable ||
+      "Sin determinar",
 
     numeroParteVisible:
-      datos.numeroParteVisible || null,
+      datos.numeroParteVisible ||
+      null,
 
-    confianza: Math.max(
-      0,
-      Math.min(100, Number(datos.confianza) || 0)
-    ),
+    confianza:
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(
+            datos.confianza
+          ) || 0
+        )
+      ),
 
-    textoVisible: Array.isArray(datos.textoVisible)
-      ? datos.textoVisible
-      : [],
+    textoVisible:
+      Array.isArray(
+        datos.textoVisible
+      )
+        ? datos.textoVisible
+        : [],
 
-    advertencias: Array.isArray(datos.advertencias)
-      ? datos.advertencias
-      : [],
+    advertencias:
+      Array.isArray(
+        datos.advertencias
+      )
+        ? datos.advertencias
+        : [],
   };
 }
 
-async function analizarImagenConGemini(file) {
-  const ai = await getGeminiClient();
+async function analizarImagenConGemini(
+  file
+) {
+  const ai =
+    await getGeminiClient();
 
-  const base64Image = fs.readFileSync(file.path, {
-    encoding: "base64",
-  });
+  const base64Image =
+    fs.readFileSync(
+      file.path,
+      {
+        encoding: "base64",
+      }
+    );
 
   const prompt = `
 Analiza esta fotografía para un sistema de identificación
@@ -327,25 +357,30 @@ Reglas:
   `.trim();
 
   const interaction =
-    await ai.interactions.create({
-      model:
-        process.env.GEMINI_MODEL ||
-        "gemini-3.5-flash",
+    await ai.interactions.create(
+      {
+        model:
+          process.env
+            .GEMINI_MODEL ||
+          "gemini-3-flash-preview",
 
-      input: [
-        {
-          type: "text",
-          text: prompt,
-        },
-        {
-          type: "image",
-          data: base64Image,
-          mime_type: file.mimetype,
-        },
-      ],
-    });
+        input: [
+          {
+            type: "text",
+            text: prompt,
+          },
+          {
+            type: "image",
+            data: base64Image,
+            mime_type:
+              file.mimetype,
+          },
+        ],
+      }
+    );
 
-  const outputText = interaction.output_text;
+  const outputText =
+    interaction.output_text;
 
   if (!outputText) {
     throw new Error(
@@ -355,11 +390,18 @@ Reglas:
 
   try {
     const jsonText =
-      limpiarRespuestaJson(outputText);
+      limpiarRespuestaJson(
+        outputText
+      );
 
-    const datos = JSON.parse(jsonText);
+    const datos =
+      JSON.parse(
+        jsonText
+      );
 
-    return validarAnalisis(datos);
+    return validarAnalisis(
+      datos
+    );
   } catch (error) {
     console.error(
       "Respuesta original de Gemini:",
@@ -373,187 +415,1574 @@ Reglas:
 }
 
 // ==========================================
+// FUNCIONES DE CLIENTES
+// ==========================================
+
+function limpiarTelefono(
+  valor
+) {
+  return String(
+    valor || ""
+  )
+    .replace(
+      /[^\d+]/g,
+      ""
+    )
+    .trim();
+}
+
+async function obtenerOCrearCliente(
+  nombre,
+  telefono
+) {
+  const nombreLimpio =
+    String(
+      nombre || ""
+    ).trim();
+
+  const telefonoLimpio =
+    limpiarTelefono(
+      telefono
+    );
+
+  if (
+    !nombreLimpio ||
+    !telefonoLimpio
+  ) {
+    throw new Error(
+      "El nombre y el teléfono del cliente son obligatorios."
+    );
+  }
+
+  const existente =
+    await dbGet(
+      `
+      SELECT *
+      FROM clientes
+      WHERE telefono = ?
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [
+        telefonoLimpio,
+      ]
+    );
+
+  if (existente) {
+    if (
+      existente.nombre !==
+      nombreLimpio
+    ) {
+      await dbRun(
+        `
+        UPDATE clientes
+        SET nombre = ?
+        WHERE id = ?
+        `,
+        [
+          nombreLimpio,
+          existente.id,
+        ]
+      );
+
+      return {
+        ...existente,
+        nombre:
+          nombreLimpio,
+      };
+    }
+
+    return existente;
+  }
+
+  const resultado =
+    await dbRun(
+      `
+      INSERT INTO clientes
+      (
+        nombre,
+        telefono
+      )
+      VALUES (?, ?)
+      `,
+      [
+        nombreLimpio,
+        telefonoLimpio,
+      ]
+    );
+
+  return {
+    id:
+      resultado.lastID,
+
+    nombre:
+      nombreLimpio,
+
+    telefono:
+      telefonoLimpio,
+  };
+}
+
+// ==========================================
+// GENERAR FOLIO
+// ==========================================
+
+function generarFolioCotizacion() {
+  const ahora =
+    new Date();
+
+  const fecha = [
+    ahora.getFullYear(),
+
+    String(
+      ahora.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    ),
+
+    String(
+      ahora.getDate()
+    ).padStart(
+      2,
+      "0"
+    ),
+  ].join("");
+
+  const hora = [
+    String(
+      ahora.getHours()
+    ).padStart(
+      2,
+      "0"
+    ),
+
+    String(
+      ahora.getMinutes()
+    ).padStart(
+      2,
+      "0"
+    ),
+
+    String(
+      ahora.getSeconds()
+    ).padStart(
+      2,
+      "0"
+    ),
+  ].join("");
+
+  const aleatorio =
+    Math.floor(
+      100 +
+        Math.random() *
+          900
+    );
+
+  return (
+    `COT-${fecha}-` +
+    `${hora}-` +
+    `${aleatorio}`
+  );
+}
+
+// ==========================================
 // RUTAS GENERALES
 // ==========================================
 
-app.get("/", (req, res) => {
-  res.json({
-    mensaje:
-      "Servidor Suzuki Parts Vision AI funcionando",
-  });
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.json({
+      success: true,
 
-app.get("/api/test", (req, res) => {
-  res.json({
-    success: true,
-    mensaje:
-      "Conexión Frontend ↔ Backend correcta",
-    geminiConfigurado:
-      Boolean(process.env.GEMINI_API_KEY),
-  });
-});
-
-// ==========================================
-// INVENTARIO
-// ==========================================
-
-app.get("/api/refacciones", (req, res) => {
-  db.all(
-    `
-    SELECT *
-    FROM refacciones
-    ORDER BY descripcion
-    `,
-    [],
-    (error, rows) => {
-      if (error) {
-        return res.status(500).json({
-          success: false,
-          mensaje: error.message,
-        });
-      }
-
-      return res.json({
-        success: true,
-        datos: rows,
-      });
-    }
-  );
-});
-
-app.post("/api/refacciones", (req, res) => {
-  const {
-    numeroParte,
-    descripcion,
-    modelo,
-    anio,
-    existencias,
-    ubicacion,
-    precio,
-  } = req.body;
-
-  if (
-    !numeroParte?.trim() ||
-    !descripcion?.trim()
-  ) {
-    return res.status(400).json({
-      success: false,
       mensaje:
-        "El número de parte y la descripción son obligatorios.",
+        "Servidor Suzuki Parts Vision AI funcionando",
     });
   }
+);
 
-  db.run(
-    `
-    INSERT INTO refacciones
-    (
+app.get(
+  "/api/test",
+  (req, res) => {
+    res.json({
+      success: true,
+
+      mensaje:
+        "Conexión Frontend ↔ Backend correcta",
+
+      geminiConfigurado:
+        Boolean(
+          process.env
+            .GEMINI_API_KEY
+        ),
+    });
+  }
+);
+
+// ==========================================
+// REFACCIONES
+// ==========================================
+
+app.get(
+  "/api/refacciones",
+  (req, res) => {
+    db.all(
+      `
+      SELECT *
+      FROM refacciones
+      ORDER BY descripcion
+      `,
+      [],
+      (
+        error,
+        rows
+      ) => {
+        if (error) {
+          return res
+            .status(500)
+            .json({
+              success:
+                false,
+
+              mensaje:
+                error.message,
+            });
+        }
+
+        return res.json({
+          success: true,
+          datos:
+            rows || [],
+        });
+      }
+    );
+  }
+);
+
+app.post(
+  "/api/refacciones",
+  (req, res) => {
+    const {
       numeroParte,
       descripcion,
       modelo,
       anio,
       existencias,
       ubicacion,
-      precio
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      numeroParte.trim(),
-      descripcion.trim(),
-      modelo?.trim() || "",
-      anio?.trim() || "",
-      Number(existencias || 0),
-      ubicacion?.trim() || "",
-      Number(precio || 0),
-    ],
-    function handleInsert(error) {
-      if (error) {
-        const mensaje =
-          error.message.includes(
-            "UNIQUE constraint failed"
-          )
-            ? "Ese número de parte ya existe en el inventario."
-            : error.message;
+      precio,
+    } = req.body;
 
-        return res.status(500).json({
+    if (
+      !numeroParte?.trim() ||
+      !descripcion?.trim()
+    ) {
+      return res
+        .status(400)
+        .json({
           success: false,
-          mensaje,
+
+          mensaje:
+            "El número de parte y la descripción son obligatorios.",
         });
+    }
+
+    db.run(
+      `
+      INSERT INTO refacciones
+      (
+        numeroParte,
+        descripcion,
+        modelo,
+        anio,
+        existencias,
+        ubicacion,
+        precio
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        numeroParte.trim(),
+        descripcion.trim(),
+        modelo?.trim() ||
+          "",
+        anio?.trim() ||
+          "",
+        Number(
+          existencias || 0
+        ),
+        ubicacion?.trim() ||
+          "",
+        Number(
+          precio || 0
+        ),
+      ],
+      function handleInsert(
+        error
+      ) {
+        if (error) {
+          const mensaje =
+            error.message.includes(
+              "UNIQUE constraint failed"
+            )
+              ? "Ese número de parte ya existe en el inventario."
+              : error.message;
+
+          return res
+            .status(500)
+            .json({
+              success:
+                false,
+              mensaje,
+            });
+        }
+
+        return res
+          .status(201)
+          .json({
+            success: true,
+
+            id:
+              this.lastID,
+
+            mensaje:
+              "Refacción agregada correctamente.",
+          });
+      }
+    );
+  }
+);
+
+// ==========================================
+// CLIENTES
+// ==========================================
+
+app.get(
+  "/api/clientes",
+  async (req, res) => {
+    try {
+      const buscar =
+        String(
+          req.query.buscar ||
+            ""
+        ).trim();
+
+      let sql = `
+        SELECT
+          id,
+          nombre,
+          telefono,
+          fechaRegistro
+        FROM clientes
+      `;
+
+      const params = [];
+
+      if (buscar) {
+        sql += `
+          WHERE
+            nombre LIKE ?
+            OR telefono LIKE ?
+        `;
+
+        const patron =
+          `%${buscar}%`;
+
+        params.push(
+          patron,
+          patron
+        );
       }
 
-      return res.status(201).json({
+      sql += `
+        ORDER BY
+          fechaRegistro DESC,
+          id DESC
+        LIMIT 100
+      `;
+
+      const clientes =
+        await dbAll(
+          sql,
+          params
+        );
+
+      return res.json({
         success: true,
-        id: this.lastID,
-        mensaje:
-          "Refacción agregada correctamente.",
+        datos: clientes,
       });
+    } catch (error) {
+      console.error(
+        "Error al consultar clientes:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudieron consultar los clientes.",
+        });
     }
-  );
-});
+  }
+);
+
+app.post(
+  "/api/clientes",
+  async (req, res) => {
+    try {
+      const nombre =
+        String(
+          req.body?.nombre ||
+            ""
+        ).trim();
+
+      const telefono =
+        limpiarTelefono(
+          req.body
+            ?.telefono
+        );
+
+      if (
+        !nombre ||
+        !telefono
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "El nombre y el teléfono son obligatorios.",
+          });
+      }
+
+      const cliente =
+        await obtenerOCrearCliente(
+          nombre,
+          telefono
+        );
+
+      return res
+        .status(201)
+        .json({
+          success: true,
+
+          mensaje:
+            "Cliente guardado correctamente.",
+
+          cliente,
+        });
+    } catch (error) {
+      console.error(
+        "Error al guardar cliente:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo guardar el cliente.",
+        });
+    }
+  }
+);
 
 // ==========================================
-// ANÁLISIS REAL DE IMAGEN CON GEMINI
+// COTIZACIONES
 // ==========================================
 
-async function identificarPieza(req, res) {
+app.post(
+  "/api/cotizaciones",
+  async (req, res) => {
+    let transactionStarted =
+      false;
+
+    try {
+      const nombreCliente =
+        String(
+          req.body
+            ?.nombreCliente ||
+            ""
+        ).trim();
+
+      const telefonoCliente =
+        limpiarTelefono(
+          req.body
+            ?.telefonoCliente
+        );
+
+      const items =
+        Array.isArray(
+          req.body?.items
+        )
+          ? req.body.items
+          : [];
+
+      const observaciones =
+        String(
+          req.body
+            ?.observaciones ||
+            ""
+        ).trim();
+
+      if (
+        !nombreCliente ||
+        !telefonoCliente
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "El nombre y el teléfono del cliente son obligatorios.",
+          });
+      }
+
+      if (
+        items.length === 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "La cotización debe incluir al menos una refacción.",
+          });
+      }
+
+      const itemsNormalizados =
+        items.map(
+          (item) => {
+            const numeroParte =
+              String(
+                item
+                  ?.numeroParte ||
+                  ""
+              ).trim();
+
+            const descripcion =
+              String(
+                item
+                  ?.descripcion ||
+                  ""
+              ).trim();
+
+            const cantidad =
+              Math.max(
+                1,
+                Number(
+                  item
+                    ?.cantidad ||
+                    1
+                )
+              );
+
+            const precioUnitario =
+              Math.max(
+                0,
+                Number(
+                  item
+                    ?.precioUnitario ??
+                    item?.precio ??
+                    0
+                )
+              );
+
+            return {
+              numeroParte,
+              descripcion,
+              cantidad,
+              precioUnitario,
+
+              subtotal:
+                cantidad *
+                precioUnitario,
+            };
+          }
+        );
+
+      const itemInvalido =
+        itemsNormalizados.find(
+          (item) =>
+            !item.numeroParte
+        );
+
+      if (itemInvalido) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "Todas las refacciones deben tener número de parte.",
+          });
+      }
+
+      const subtotal =
+        itemsNormalizados.reduce(
+          (
+            acumulado,
+            item
+          ) =>
+            acumulado +
+            item.subtotal,
+          0
+        );
+
+      const total =
+        subtotal;
+
+      const folio =
+        generarFolioCotizacion();
+
+      await dbRun(
+        "BEGIN TRANSACTION"
+      );
+
+      transactionStarted =
+        true;
+
+      const cliente =
+        await obtenerOCrearCliente(
+          nombreCliente,
+          telefonoCliente
+        );
+
+      const resultadoCotizacion =
+        await dbRun(
+          `
+          INSERT INTO cotizaciones
+          (
+            folio,
+            clienteId,
+            estado,
+            subtotal,
+            total,
+            observaciones
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+          `,
+          [
+            folio,
+            cliente.id,
+            "Pendiente",
+            subtotal,
+            total,
+            observaciones,
+          ]
+        );
+
+      const cotizacionId =
+        resultadoCotizacion
+          .lastID;
+
+      for (
+        const item of
+        itemsNormalizados
+      ) {
+        await dbRun(
+          `
+          INSERT INTO cotizacion_detalle
+          (
+            cotizacionId,
+            numeroParte,
+            descripcion,
+            cantidad,
+            precioUnitario,
+            subtotal
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+          `,
+          [
+            cotizacionId,
+            item.numeroParte,
+            item.descripcion,
+            item.cantidad,
+            item.precioUnitario,
+            item.subtotal,
+          ]
+        );
+
+        // ==================================
+        // HISTORIAL PERMANENTE
+        // ==================================
+
+        await dbRun(
+          `
+          INSERT INTO historial_pedidos
+          (
+            clienteId,
+            nombreCliente,
+            telefonoCliente,
+            cotizacionId,
+            folioCotizacion,
+            numeroParte,
+            descripcion,
+            cantidad,
+            precioUnitario,
+            subtotal,
+            estado
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            cliente.id,
+            cliente.nombre,
+            cliente.telefono,
+            cotizacionId,
+            folio,
+            item.numeroParte,
+            item.descripcion,
+            item.cantidad,
+            item.precioUnitario,
+            item.subtotal,
+            "Pendiente",
+          ]
+        );
+      }
+
+      await dbRun(
+        "COMMIT"
+      );
+
+      transactionStarted =
+        false;
+
+      return res
+        .status(201)
+        .json({
+          success: true,
+
+          mensaje:
+            "Cotización creada correctamente.",
+
+          cotizacion: {
+            id:
+              cotizacionId,
+
+            folio,
+
+            cliente,
+
+            estado:
+              "Pendiente",
+
+            subtotal,
+
+            total,
+
+            observaciones,
+
+            items:
+              itemsNormalizados,
+          },
+        });
+    } catch (error) {
+      if (
+        transactionStarted
+      ) {
+        try {
+          await dbRun(
+            "ROLLBACK"
+          );
+        } catch (
+          rollbackError
+        ) {
+          console.error(
+            "Error al revertir la cotización:",
+            rollbackError
+          );
+        }
+      }
+
+      console.error(
+        "Error al crear cotización:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo crear la cotización.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// LISTAR COTIZACIONES
+// ==========================================
+
+app.get(
+  "/api/cotizaciones",
+  async (req, res) => {
+    try {
+      const rows =
+        await dbAll(`
+          SELECT
+            c.id,
+            c.folio,
+            c.fecha,
+            c.estado,
+            c.subtotal,
+            c.total,
+            c.observaciones,
+
+            cl.id
+              AS clienteId,
+
+            cl.nombre
+              AS nombreCliente,
+
+            cl.telefono
+              AS telefonoCliente
+
+          FROM cotizaciones c
+
+          INNER JOIN clientes cl
+            ON cl.id =
+            c.clienteId
+
+          ORDER BY
+            c.fecha DESC,
+            c.id DESC
+        `);
+
+      return res.json({
+        success: true,
+        datos: rows,
+      });
+    } catch (error) {
+      console.error(
+        "Error al consultar cotizaciones:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudieron consultar las cotizaciones.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// CONSULTAR UNA COTIZACIÓN
+// ==========================================
+
+app.get(
+  "/api/cotizaciones/:id",
+  async (req, res) => {
+    try {
+      const id =
+        Number(
+          req.params.id
+        );
+
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "Identificador de cotización inválido.",
+          });
+      }
+
+      const cotizacion =
+        await dbGet(
+          `
+          SELECT
+            c.id,
+            c.folio,
+            c.fecha,
+            c.estado,
+            c.subtotal,
+            c.total,
+            c.observaciones,
+
+            cl.id
+              AS clienteId,
+
+            cl.nombre
+              AS nombreCliente,
+
+            cl.telefono
+              AS telefonoCliente
+
+          FROM cotizaciones c
+
+          INNER JOIN clientes cl
+            ON cl.id =
+            c.clienteId
+
+          WHERE c.id = ?
+          `,
+          [id]
+        );
+
+      if (!cotizacion) {
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "No se encontró la cotización.",
+          });
+      }
+
+      const items =
+        await dbAll(
+          `
+          SELECT
+            id,
+            numeroParte,
+            descripcion,
+            cantidad,
+            precioUnitario,
+            subtotal
+
+          FROM cotizacion_detalle
+
+          WHERE cotizacionId = ?
+
+          ORDER BY id
+          `,
+          [id]
+        );
+
+      return res.json({
+        success: true,
+
+        cotizacion: {
+          ...cotizacion,
+          items,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Error al consultar cotización:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo consultar la cotización.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// CAMBIAR ESTADO DE COTIZACIÓN
+// ==========================================
+
+app.patch(
+  "/api/cotizaciones/:id/estado",
+  async (req, res) => {
+    let transactionStarted =
+      false;
+
+    try {
+      const id =
+        Number(
+          req.params.id
+        );
+
+      const estado =
+        String(
+          req.body?.estado ||
+            ""
+        ).trim();
+
+      const estadosPermitidos =
+        [
+          "Pendiente",
+          "Enviada",
+          "Aceptada",
+          "Rechazada",
+          "Vencida",
+        ];
+
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "Identificador de cotización inválido.",
+          });
+      }
+
+      if (
+        !estadosPermitidos.includes(
+          estado
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "Estado de cotización inválido.",
+          });
+      }
+
+      await dbRun(
+        "BEGIN TRANSACTION"
+      );
+
+      transactionStarted =
+        true;
+
+      const resultado =
+        await dbRun(
+          `
+          UPDATE cotizaciones
+          SET estado = ?
+          WHERE id = ?
+          `,
+          [
+            estado,
+            id,
+          ]
+        );
+
+      if (
+        resultado.changes ===
+        0
+      ) {
+        await dbRun(
+          "ROLLBACK"
+        );
+
+        transactionStarted =
+          false;
+
+        return res
+          .status(404)
+          .json({
+            success:
+              false,
+
+            mensaje:
+              "No se encontró la cotización.",
+          });
+      }
+
+      // El historial NO se elimina.
+      // Solo cambia el estado.
+
+      await dbRun(
+        `
+        UPDATE historial_pedidos
+        SET estado = ?
+        WHERE cotizacionId = ?
+        `,
+        [
+          estado,
+          id,
+        ]
+      );
+
+      await dbRun(
+        "COMMIT"
+      );
+
+      transactionStarted =
+        false;
+
+      return res.json({
+        success: true,
+
+        mensaje:
+          "Estado actualizado correctamente.",
+
+        estado,
+      });
+    } catch (error) {
+      if (
+        transactionStarted
+      ) {
+        try {
+          await dbRun(
+            "ROLLBACK"
+          );
+        } catch (
+          rollbackError
+        ) {
+          console.error(
+            "Error al revertir actualización:",
+            rollbackError
+          );
+        }
+      }
+
+      console.error(
+        "Error al actualizar estado:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo actualizar el estado.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// HISTORIAL PERMANENTE
+// ==========================================
+
+app.get(
+  "/api/historial",
+  async (req, res) => {
+    try {
+      const buscar =
+        String(
+          req.query.buscar ||
+            ""
+        ).trim();
+
+      const paginaSolicitada =
+        Number(
+          req.query.pagina ||
+            1
+        );
+
+      const limiteSolicitado =
+        Number(
+          req.query.limite ||
+            50
+        );
+
+      const pagina =
+        Number.isInteger(
+          paginaSolicitada
+        ) &&
+        paginaSolicitada > 0
+          ? paginaSolicitada
+          : 1;
+
+      const limite =
+        Number.isInteger(
+          limiteSolicitado
+        ) &&
+        limiteSolicitado > 0
+          ? Math.min(
+              limiteSolicitado,
+              200
+            )
+          : 50;
+
+      const offset =
+        (pagina - 1) *
+        limite;
+
+      let whereSql = "";
+
+      const params = [];
+
+      if (buscar) {
+        whereSql = `
+          WHERE
+            nombreCliente LIKE ?
+            OR telefonoCliente LIKE ?
+            OR numeroParte LIKE ?
+            OR descripcion LIKE ?
+            OR folioCotizacion LIKE ?
+            OR estado LIKE ?
+        `;
+
+        const patron =
+          `%${buscar}%`;
+
+        params.push(
+          patron,
+          patron,
+          patron,
+          patron,
+          patron,
+          patron
+        );
+      }
+
+      const totalRow =
+        await dbGet(
+          `
+          SELECT
+            COUNT(*) AS total
+
+          FROM historial_pedidos
+
+          ${whereSql}
+          `,
+          params
+        );
+
+      const total =
+        Number(
+          totalRow?.total ||
+            0
+        );
+
+      const datos =
+        await dbAll(
+          `
+          SELECT
+            id,
+            fecha,
+            clienteId,
+            nombreCliente,
+            telefonoCliente,
+            cotizacionId,
+            folioCotizacion,
+            numeroParte,
+            descripcion,
+            cantidad,
+            precioUnitario,
+            subtotal,
+            estado
+
+          FROM historial_pedidos
+
+          ${whereSql}
+
+          ORDER BY
+            fecha DESC,
+            id DESC
+
+          LIMIT ?
+          OFFSET ?
+          `,
+          [
+            ...params,
+            limite,
+            offset,
+          ]
+        );
+
+      const totalPaginas =
+        Math.max(
+          1,
+          Math.ceil(
+            total /
+              limite
+          )
+        );
+
+      return res.json({
+        success: true,
+
+        datos,
+
+        paginacion: {
+          pagina,
+          limite,
+          total,
+          totalPaginas,
+
+          tieneAnterior:
+            pagina > 1,
+
+          tieneSiguiente:
+            pagina <
+            totalPaginas,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Error al consultar historial:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo consultar el historial.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// CONVERSIÓN DE COMPRA
+// ==========================================
+
+app.get(
+  "/api/conversion",
+  async (req, res) => {
+    try {
+      const resumen =
+        await dbGet(`
+          SELECT
+            COUNT(*)
+              AS totalCotizaciones,
+
+            SUM(
+              CASE
+                WHEN estado =
+                'Aceptada'
+                THEN 1
+                ELSE 0
+              END
+            ) AS aceptadas,
+
+            SUM(
+              CASE
+                WHEN estado =
+                'Rechazada'
+                THEN 1
+                ELSE 0
+              END
+            ) AS rechazadas,
+
+            SUM(
+              CASE
+                WHEN estado =
+                'Pendiente'
+                OR estado =
+                'Enviada'
+                THEN 1
+                ELSE 0
+              END
+            ) AS pendientes,
+
+            SUM(
+              CASE
+                WHEN estado =
+                'Aceptada'
+                THEN total
+                ELSE 0
+              END
+            ) AS montoConvertido
+
+          FROM cotizaciones
+        `);
+
+      const totalCotizaciones =
+        Number(
+          resumen
+            ?.totalCotizaciones ||
+            0
+        );
+
+      const aceptadas =
+        Number(
+          resumen?.aceptadas ||
+            0
+        );
+
+      const porcentajeConversion =
+        totalCotizaciones > 0
+          ? Number(
+              (
+                (
+                  aceptadas /
+                  totalCotizaciones
+                ) *
+                100
+              ).toFixed(2)
+            )
+          : 0;
+
+      return res.json({
+        success: true,
+
+        datos: {
+          totalCotizaciones,
+
+          aceptadas,
+
+          rechazadas:
+            Number(
+              resumen
+                ?.rechazadas ||
+                0
+            ),
+
+          pendientes:
+            Number(
+              resumen
+                ?.pendientes ||
+                0
+            ),
+
+          porcentajeConversion,
+
+          montoConvertido:
+            Number(
+              resumen
+                ?.montoConvertido ||
+                0
+            ),
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Error al calcular conversión:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo calcular la conversión.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// IDENTIFICAR PIEZA CON GEMINI
+// ==========================================
+
+async function identificarPieza(
+  req,
+  res
+) {
   try {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        mensaje:
-          "No se recibió ninguna imagen.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          mensaje:
+            "No se recibió ninguna imagen.",
+        });
     }
 
-    console.log("Analizando fotografía:", {
-      nombre: req.file.originalname,
-      tipo: req.file.mimetype,
-      tamaño: req.file.size,
-    });
+    console.log(
+      "Analizando fotografía:",
+      {
+        nombre:
+          req.file
+            .originalname,
+
+        tipo:
+          req.file
+            .mimetype,
+
+        tamaño:
+          req.file
+            .size,
+      }
+    );
 
     const analisisGemini =
-      await analizarImagenConGemini(req.file);
+      await analizarImagenConGemini(
+        req.file
+      );
 
     const coincidenciasInventario =
-  await buscarCoincidencias(
-    analisisGemini,
-    5
-  );
+      await buscarCoincidencias(
+        analisisGemini,
+        5
+      );
 
-const inventario =
-  coincidenciasInventario[0] || null;
+    const inventario =
+      coincidenciasInventario[0] ||
+      null;
 
-    const analisisCompatible = {
-      descripcion:
-        analisisGemini.nombrePieza,
+    const analisisCompatible =
+      {
+        descripcion:
+          analisisGemini
+            .nombrePieza,
 
-      detalle:
-        analisisGemini.descripcion,
+        detalle:
+          analisisGemini
+            .descripcion,
 
-      numeroParte:
-        analisisGemini.numeroParteVisible,
+        numeroParte:
+          analisisGemini
+            .numeroParteVisible,
 
-      modelo:
-        analisisGemini.modeloProbable,
+        modelo:
+          analisisGemini
+            .modeloProbable,
 
-      anio:
-        analisisGemini.anioProbable,
+        anio:
+          analisisGemini
+            .anioProbable,
 
-      categoria:
-        analisisGemini.categoria,
+        categoria:
+          analisisGemini
+            .categoria,
 
-      posicion:
-        analisisGemini.posicion,
+        posicion:
+          analisisGemini
+            .posicion,
 
-      confianza:
-        analisisGemini.confianza,
+        confianza:
+          analisisGemini
+            .confianza,
 
-      textoVisible:
-        analisisGemini.textoVisible,
+        textoVisible:
+          analisisGemini
+            .textoVisible,
 
-      advertencias:
-        analisisGemini.advertencias,
-    };
+        advertencias:
+          analisisGemini
+            .advertencias,
+      };
 
     console.log(
       "Resultado de Gemini:",
@@ -561,16 +1990,19 @@ const inventario =
     );
 
     console.log(
-  "Coincidencia principal:",
-  inventario
-    ? inventario.numeroParte
-    : "Sin coincidencia"
-);
+      "Coincidencia principal:",
+      inventario
+        ? inventario
+            .numeroParte
+        : "Sin coincidencia"
+    );
 
-console.log(
-  "Coincidencias encontradas:",
-  coincidenciasInventario.length
-);
+    console.log(
+      "Coincidencias encontradas:",
+      coincidenciasInventario
+        .length
+    );
+
     return res.json({
       success: true,
 
@@ -580,19 +2012,34 @@ console.log(
       simulacion: false,
 
       archivo: {
-        nombre: req.file.originalname,
-        nombreGuardado: req.file.filename,
-        tipo: req.file.mimetype,
-        tamaño: req.file.size,
+        nombre:
+          req.file
+            .originalname,
+
+        nombreGuardado:
+          req.file
+            .filename,
+
+        tipo:
+          req.file
+            .mimetype,
+
+        tamaño:
+          req.file
+            .size,
       },
 
-      analisis: analisisCompatible,
+      analisis:
+        analisisCompatible,
 
       inventarioEncontrado:
-        Boolean(inventario),
+        Boolean(
+          inventario
+        ),
 
       inventario,
-        coincidenciasInventario,
+
+      coincidenciasInventario,
     });
   } catch (error) {
     console.error(
@@ -601,40 +2048,87 @@ console.log(
     );
 
     let statusCode = 500;
+
     let mensaje =
       error.message ||
       "No se pudo analizar la fotografía.";
 
-    const errorText = String(
-      error.message || ""
-    ).toLowerCase();
+    const errorText =
+      String(
+        error.message ||
+          ""
+      ).toLowerCase();
 
     if (
-      errorText.includes("api key") ||
-      errorText.includes("unauthorized") ||
-      errorText.includes("permission")
+      errorText.includes(
+        "api key"
+      ) ||
+      errorText.includes(
+        "unauthorized"
+      ) ||
+      errorText.includes(
+        "permission"
+      )
     ) {
       statusCode = 401;
+
       mensaje =
         "La clave de Gemini no es válida o no tiene permisos.";
     }
 
     if (
-      errorText.includes("quota") ||
-      errorText.includes("rate limit") ||
-      errorText.includes("resource exhausted")
+      errorText.includes(
+        "quota"
+      ) ||
+      errorText.includes(
+        "rate limit"
+      ) ||
+      errorText.includes(
+        "resource exhausted"
+      )
     ) {
       statusCode = 429;
+
       mensaje =
         "Se alcanzó el límite disponible de Gemini. Intenta nuevamente más tarde.";
     }
 
-    return res.status(statusCode).json({
-      success: false,
-      mensaje,
-    });
+    return res
+      .status(statusCode)
+      .json({
+        success: false,
+        mensaje,
+      });
+  } finally {
+    // La imagen solo es temporal.
+    // Después del análisis se elimina.
+
+    if (
+      req.file?.path &&
+      fs.existsSync(
+        req.file.path
+      )
+    ) {
+      fs.unlink(
+        req.file.path,
+        (deleteError) => {
+          if (
+            deleteError
+          ) {
+            console.error(
+              "No se pudo eliminar la imagen temporal:",
+              deleteError
+            );
+          }
+        }
+      );
+    }
   }
 }
+
+// ==========================================
+// RUTAS DE IDENTIFICACIÓN
+// ==========================================
 
 app.post(
   "/api/upload",
@@ -652,57 +2146,87 @@ app.post(
 // CONTROL DE ERRORES
 // ==========================================
 
-app.use((error, req, res, next) => {
-  console.error(
-    "Error del servidor:",
-    error
-  );
+app.use(
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
+    console.error(
+      "Error del servidor:",
+      error
+    );
 
-  if (
-    error instanceof multer.MulterError
-  ) {
-    return res.status(400).json({
-      success: false,
+    if (
+      error instanceof
+      multer.MulterError
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
 
-      mensaje:
-        error.code === "LIMIT_FILE_SIZE"
-          ? "La imagen no debe pesar más de 10 MB."
-          : "No se pudo recibir la imagen.",
-    });
+          mensaje:
+            error.code ===
+            "LIMIT_FILE_SIZE"
+              ? "La imagen no debe pesar más de 10 MB."
+              : "No se pudo recibir la imagen.",
+        });
+    }
+
+    return res
+      .status(400)
+      .json({
+        success: false,
+
+        mensaje:
+          error.message ||
+          "Ocurrió un error inesperado en el servidor.",
+      });
   }
-
-  return res.status(400).json({
-    success: false,
-
-    mensaje:
-      error.message ||
-      "Ocurrió un error inesperado en el servidor.",
-  });
-});
+);
 
 // ==========================================
 // INICIAR SERVIDOR
 // ==========================================
 
-app.listen(PORT, () => {
-  console.log(
-    `🚀 Servidor iniciado en http://localhost:${PORT}`
-  );
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      `🚀 Servidor iniciado en puerto ${PORT}`
+    );
 
-  console.log(
-    "✅ Inventario SQLite disponible."
-  );
+    console.log(
+      "✅ Inventario SQLite disponible."
+    );
 
-  console.log(
-    process.env.GEMINI_API_KEY
-      ? "🤖 Gemini configurado."
-      : "⚠️ GEMINI_API_KEY no configurada."
-  );
+    console.log(
+      process.env
+        .GEMINI_API_KEY
+        ? "🤖 Gemini configurado."
+        : "⚠️ GEMINI_API_KEY no configurada."
+    );
 
-  console.log(
-    `📷 Modelo: ${
-      process.env.GEMINI_MODEL ||
-      "gemini-3.5-flash"
-    }`
-  );
-});
+    console.log(
+      `📷 Modelo: ${
+        process.env
+          .GEMINI_MODEL ||
+        "gemini-3-flash-preview"
+      }`
+    );
+
+    console.log(
+      "👤 Módulo de clientes disponible."
+    );
+
+    console.log(
+      "🧾 Módulo de cotizaciones disponible."
+    );
+
+    console.log(
+      "📚 Historial permanente disponible."
+    );
+  }
+);
