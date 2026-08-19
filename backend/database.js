@@ -105,20 +105,99 @@ db.serialize(() => {
   // COTIZACIONES
   // ==========================================
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS cotizaciones (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      folio TEXT NOT NULL UNIQUE,
-      clienteId INTEGER NOT NULL,
-      fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      estado TEXT NOT NULL DEFAULT 'Pendiente',
-      subtotal REAL NOT NULL DEFAULT 0,
-      total REAL NOT NULL DEFAULT 0,
-      observaciones TEXT DEFAULT '',
-      FOREIGN KEY (clienteId)
-        REFERENCES clientes(id)
-    )
-  `);
+ db.run(`
+  CREATE TABLE IF NOT EXISTS cotizaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    folio TEXT NOT NULL UNIQUE,
+    clienteId INTEGER NOT NULL,
+    fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    estado TEXT NOT NULL DEFAULT 'Pendiente',
+    subtotal REAL NOT NULL DEFAULT 0,
+    total REAL NOT NULL DEFAULT 0,
+    observaciones TEXT DEFAULT '',
+    motivoRechazo TEXT DEFAULT '',
+    detalleMotivoRechazo TEXT DEFAULT '',
+    FOREIGN KEY (clienteId)
+      REFERENCES clientes(id)
+  )
+`);
+// ==========================================
+// MIGRACIONES DE COTIZACIONES
+// ==========================================
+
+db.all(
+  `PRAGMA table_info(cotizaciones)`,
+  [],
+  (error, columnas) => {
+    if (error) {
+      console.error(
+        "❌ No se pudo revisar la tabla cotizaciones:",
+        error.message
+      );
+
+      return;
+    }
+
+    const nombresColumnas =
+      columnas.map(
+        (columna) => columna.name
+      );
+
+    if (
+      !nombresColumnas.includes(
+        "motivoRechazo"
+      )
+    ) {
+      db.run(
+        `
+        ALTER TABLE cotizaciones
+        ADD COLUMN motivoRechazo TEXT DEFAULT ''
+        `,
+        (migrationError) => {
+          if (migrationError) {
+            console.error(
+              "❌ Error agregando motivoRechazo:",
+              migrationError.message
+            );
+
+            return;
+          }
+
+          console.log(
+            "✅ Columna motivoRechazo agregada."
+          );
+        }
+      );
+    }
+
+    if (
+      !nombresColumnas.includes(
+        "detalleMotivoRechazo"
+      )
+    ) {
+      db.run(
+        `
+        ALTER TABLE cotizaciones
+        ADD COLUMN detalleMotivoRechazo TEXT DEFAULT ''
+        `,
+        (migrationError) => {
+          if (migrationError) {
+            console.error(
+              "❌ Error agregando detalleMotivoRechazo:",
+              migrationError.message
+            );
+
+            return;
+          }
+
+          console.log(
+            "✅ Columna detalleMotivoRechazo agregada."
+          );
+        }
+      );
+    }
+  }
+);
 
   db.run(`
     CREATE INDEX IF NOT EXISTS

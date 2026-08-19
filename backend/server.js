@@ -1207,13 +1207,15 @@ app.get(
       const rows =
         await dbAll(`
           SELECT
-            c.id,
-            c.folio,
-            c.fecha,
-            c.estado,
-            c.subtotal,
-            c.total,
-            c.observaciones,
+  c.id,
+  c.folio,
+  c.fecha,
+  c.estado,
+  c.subtotal,
+  c.total,
+  c.observaciones,
+  c.motivoRechazo,
+  c.detalleMotivoRechazo,
 
             cl.id
               AS clienteId,
@@ -1289,14 +1291,16 @@ app.get(
       const cotizacion =
         await dbGet(
           `
-          SELECT
-            c.id,
-            c.folio,
-            c.fecha,
-            c.estado,
-            c.subtotal,
-            c.total,
-            c.observaciones,
+         SELECT
+  c.id,
+  c.folio,
+  c.fecha,
+  c.estado,
+  c.subtotal,
+  c.total,
+  c.observaciones,
+  c.motivoRechazo,
+  c.detalleMotivoRechazo,
 
             cl.id
               AS clienteId,
@@ -1398,6 +1402,17 @@ app.patch(
           req.body?.estado ||
             ""
         ).trim();
+        const motivoRechazo =
+  String(
+    req.body?.motivoRechazo ||
+      ""
+  ).trim();
+
+const detalleMotivoRechazo =
+  String(
+    req.body?.detalleMotivoRechazo ||
+      ""
+  ).trim();
 
       const estadosPermitidos =
         [
@@ -1446,18 +1461,27 @@ app.patch(
       transactionStarted =
         true;
 
-      const resultado =
-        await dbRun(
-          `
-          UPDATE cotizaciones
-          SET estado = ?
-          WHERE id = ?
-          `,
-          [
-            estado,
-            id,
-          ]
-        );
+    const resultado =
+  await dbRun(
+    `
+      UPDATE cotizaciones
+      SET
+        estado = ?,
+        motivoRechazo = ?,
+        detalleMotivoRechazo = ?
+      WHERE id = ?
+    `,
+    [
+      estado,
+      estado === "Rechazada"
+        ? motivoRechazo
+        : "",
+      estado === "Rechazada"
+        ? detalleMotivoRechazo
+        : "",
+      id,
+    ]
+  );
 
       if (
         resultado.changes ===
@@ -1504,13 +1528,23 @@ app.patch(
         false;
 
       return res.json({
-        success: true,
+  success: true,
 
-        mensaje:
-          "Estado actualizado correctamente.",
+  mensaje:
+    "Estado actualizado correctamente.",
 
-        estado,
-      });
+  estado,
+
+  motivoRechazo:
+    estado === "Rechazada"
+      ? motivoRechazo
+      : "",
+
+  detalleMotivoRechazo:
+    estado === "Rechazada"
+      ? detalleMotivoRechazo
+      : "",
+});
     } catch (error) {
       if (
         transactionStarted

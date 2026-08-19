@@ -16,6 +16,26 @@ function Historial() {
   const [detalleError, setDetalleError] =
     useState("");
 
+  const [
+    actualizandoEstadoId,
+    setActualizandoEstadoId,
+  ] = useState(null);
+
+  const [rechazoPendiente, setRechazoPendiente] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState("");
+  const [detalleMotivoRechazo, setDetalleMotivoRechazo] = useState("");
+
+  const motivosRechazo = [
+    "Precio alto",
+    "Sin presupuesto",
+    "Compró con otro proveedor",
+    "Tiempo de entrega",
+    "Pieza incorrecta / no requerida",
+    "Ya no requiere la pieza",
+    "No respondió / sin seguimiento",
+    "Otro",
+  ];
+
   useEffect(() => {
     cargarCotizaciones();
   }, []);
@@ -95,6 +115,107 @@ function Historial() {
     } finally {
       setDetalleCargando(false);
     }
+  }
+
+  async function guardarEstadoCotizacion(id, nuevoEstado, motivo = "", detalle = "") {
+    try {
+      setActualizandoEstadoId(id);
+      setError("");
+
+      const response = await fetch(
+        `${API_URL}/api/cotizaciones/${id}/estado`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            estado: nuevoEstado,
+            motivoRechazo: nuevoEstado === "Rechazada" ? motivo : "",
+            detalleMotivoRechazo: nuevoEstado === "Rechazada" ? detalle : "",
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.mensaje || "No se pudo actualizar el estado.");
+      }
+
+      const cambios = {
+        estado: nuevoEstado,
+        motivoRechazo: data.motivoRechazo || "",
+        detalleMotivoRechazo: data.detalleMotivoRechazo || "",
+      };
+
+      setCotizaciones((actuales) =>
+        actuales.map((item) =>
+          item.id === id ? { ...item, ...cambios } : item
+        )
+      );
+
+      setCotizacionSeleccionada((actual) =>
+        actual?.id === id ? { ...actual, ...cambios } : actual
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error al actualizar estado:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar el estado."
+      );
+      return false;
+    } finally {
+      setActualizandoEstadoId(null);
+    }
+  }
+
+  async function cambiarEstadoCotizacion(id, nuevoEstado) {
+    if (nuevoEstado === "Rechazada") {
+      const cotizacion = cotizaciones.find((item) => item.id === id);
+
+      setRechazoPendiente({
+        id,
+        folio: cotizacion?.folio || id,
+      });
+      setMotivoRechazo(cotizacion?.motivoRechazo || "");
+      setDetalleMotivoRechazo(
+        cotizacion?.detalleMotivoRechazo || ""
+      );
+      return;
+    }
+
+    await guardarEstadoCotizacion(id, nuevoEstado);
+  }
+
+  function cerrarModalRechazo() {
+    setRechazoPendiente(null);
+    setMotivoRechazo("");
+    setDetalleMotivoRechazo("");
+  }
+
+  async function confirmarRechazo() {
+    if (!rechazoPendiente) return;
+
+    if (!motivoRechazo) {
+      setError("Selecciona el motivo de no compra.");
+      return;
+    }
+
+    if (motivoRechazo === "Otro" && !detalleMotivoRechazo.trim()) {
+      setError("Escribe el motivo de no compra.");
+      return;
+    }
+
+    const guardado = await guardarEstadoCotizacion(
+      rechazoPendiente.id,
+      "Rechazada",
+      motivoRechazo,
+      detalleMotivoRechazo.trim()
+    );
+
+    if (guardado) cerrarModalRechazo();
   }
 
   function formatPrice(value) {
@@ -550,6 +671,46 @@ function Historial() {
     ventana.document.close();
   }
 
+  function getEstadoStyle(estado) {
+    switch (estado) {
+      case "Aceptada":
+        return {
+          background: "#dcfce7",
+          color: "#166534",
+          borderColor: "#86efac",
+        };
+
+      case "Rechazada":
+        return {
+          background: "#fee2e2",
+          color: "#991b1b",
+          borderColor: "#fca5a5",
+        };
+
+      case "Enviada":
+        return {
+          background: "#dbeafe",
+          color: "#1d4ed8",
+          borderColor: "#93c5fd",
+        };
+
+      case "Vencida":
+        return {
+          background: "#e2e8f0",
+          color: "#475569",
+          borderColor: "#cbd5e1",
+        };
+
+      case "Pendiente":
+      default:
+        return {
+          background: "#fff7ed",
+          color: "#9a3412",
+          borderColor: "#fdba74",
+        };
+    }
+  }
+
   const cotizacionesFiltradas =
     cotizaciones.filter((item) => {
       const textoBusqueda =
@@ -566,6 +727,8 @@ function Historial() {
         item.nombreCliente,
         item.telefonoCliente,
         item.estado,
+        item.motivoRechazo,
+        item.detalleMotivoRechazo,
       ]
         .join(" ")
         .toLowerCase();
@@ -776,27 +939,64 @@ function Historial() {
                       </td>
 
                       <td style={tdStyle}>
-                        <span
+                        <select
+                          value={
+                            item.estado ||
+                            "Pendiente"
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            cambiarEstadoCotizacion(
+                              item.id,
+                              event.target.value
+                            )
+                          }
+                          disabled={
+                            actualizandoEstadoId ===
+                            item.id
+                          }
                           style={{
-                            display:
-                              "inline-block",
                             padding:
-                              "5px 10px",
+                              "7px 12px",
                             borderRadius:
                               999,
-                            background:
-                              "#fff7ed",
-                            color:
-                              "#9a3412",
+                            border:
+                              "1px solid",
                             fontWeight:
                               700,
                             fontSize: 13,
+                            cursor:
+                              actualizandoEstadoId ===
+                              item.id
+                                ? "wait"
+                                : "pointer",
+                            outline: "none",
+                            ...getEstadoStyle(
+                              item.estado
+                            ),
                           }}
                         >
-                          {
-                            item.estado
-                          }
-                        </span>
+                          <option value="Pendiente">
+                            Pendiente
+                          </option>
+
+                          <option value="Enviada">
+                            Enviada
+                          </option>
+
+                          <option value="Aceptada">
+                            Aceptada
+                          </option>
+
+                          <option value="Rechazada">
+                            Rechazada
+                          </option>
+
+                          <option value="Vencida">
+                            Vencida
+                          </option>
+                        </select>
                       </td>
 
                       <td style={tdStyle}>
@@ -829,6 +1029,120 @@ function Historial() {
         )}
 
       </section>
+
+      {rechazoPendiente && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(15, 23, 42, 0.70)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 520,
+              background: "#ffffff",
+              borderRadius: 18,
+              padding: 26,
+              boxShadow: "0 20px 50px rgba(0,0,0,.25)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 8px", color: "#123f73" }}>
+              Motivo de no compra
+            </h2>
+
+            <p style={{ margin: "0 0 20px", color: "#64748b" }}>
+              Cotización #{rechazoPendiente.folio}. Selecciona por qué
+              el cliente no realizó la compra.
+            </p>
+
+            <label style={{ display: "block", fontWeight: 700, marginBottom: 7 }}>
+              Motivo
+            </label>
+
+            <select
+              value={motivoRechazo}
+              onChange={(event) => {
+                const valor = event.target.value;
+                setMotivoRechazo(valor);
+                if (valor !== "Otro") setDetalleMotivoRechazo("");
+              }}
+              style={{
+                width: "100%",
+                padding: "11px 12px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                marginBottom: 16,
+              }}
+            >
+              <option value="">Selecciona un motivo...</option>
+              {motivosRechazo.map((motivo) => (
+                <option key={motivo} value={motivo}>
+                  {motivo}
+                </option>
+              ))}
+            </select>
+
+            {motivoRechazo === "Otro" && (
+              <>
+                <label style={{ display: "block", fontWeight: 700, marginBottom: 7 }}>
+                  Especifica el motivo
+                </label>
+                <textarea
+                  value={detalleMotivoRechazo}
+                  onChange={(event) =>
+                    setDetalleMotivoRechazo(event.target.value)
+                  }
+                  placeholder="Escribe el motivo..."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "11px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    resize: "vertical",
+                    marginBottom: 16,
+                  }}
+                />
+              </>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 12,
+                marginTop: 8,
+              }}
+            >
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={cerrarModalRechazo}
+                disabled={actualizandoEstadoId === rechazoPendiente.id}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={confirmarRechazo}
+                disabled={actualizandoEstadoId === rechazoPendiente.id}
+              >
+                {actualizandoEstadoId === rechazoPendiente.id
+                  ? "Guardando..."
+                  : "Guardar rechazo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {detalleCargando && (
         <div className="modal-overlay">
@@ -959,6 +1273,21 @@ function Historial() {
                   cotizacionSeleccionada.estado
                 }
               />
+
+              {cotizacionSeleccionada.estado === "Rechazada" && (
+                <InfoBox
+                  label="Motivo de no compra"
+                  value={cotizacionSeleccionada.motivoRechazo}
+                />
+              )}
+
+              {cotizacionSeleccionada.estado === "Rechazada" &&
+                cotizacionSeleccionada.detalleMotivoRechazo && (
+                  <InfoBox
+                    label="Detalle del motivo"
+                    value={cotizacionSeleccionada.detalleMotivoRechazo}
+                  />
+                )}
             </div>
 
             <h3

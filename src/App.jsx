@@ -8,6 +8,7 @@ import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import Inventario from "./components/Inventario";
 import Historial from "./components/Historial";
+import Reportes from "./components/Reportes";
 import Barcode from "./components/Barcode";
 
 import {
@@ -84,11 +85,6 @@ function App() {
     cotizacionCreada,
     setCotizacionCreada,
   ] = useState(null);
-
-  const [
-    itemsCotizacion,
-    setItemsCotizacion,
-  ] = useState([]);
 
   // ==========================================
   // HISTORIAL
@@ -222,8 +218,9 @@ function App() {
 
     setResult(null);
 
-    // Conservamos los datos del cliente para poder
-    // agregar varias refacciones a la misma cotización.
+    setClienteNombre("");
+    setClienteTelefono("");
+
     setCantidadCotizacion(1);
 
     setCotizacionError("");
@@ -393,17 +390,25 @@ function App() {
   }
 
   // ==========================================
-  // CARRITO / COTIZACIÓN
+  // CREAR COTIZACIÓN
   // ==========================================
 
-  function handleAgregarACotizacion() {
-    if (!result?.inventory) {
+  async function handleCrearCotizacion() {
+    if (
+      !result?.inventory
+    ) {
       setCotizacionError(
         "Primero debe existir una refacción identificada en el inventario."
       );
 
       return;
     }
+
+    const nombre =
+      clienteNombre.trim();
+
+    const telefono =
+      clienteTelefono.trim();
 
     const cantidad =
       Math.max(
@@ -413,154 +418,12 @@ function App() {
         ) || 1
       );
 
-    const nuevoItem = {
-      numeroParte:
-        result.inventory.numeroParte,
-
-      descripcion:
-        result.inventory.descripcion ||
-        result.description ||
-        "",
-
-      cantidad,
-
-      precioUnitario:
-        Number(
-          result.inventory.precio ||
-          0
-        ),
-    };
-
-    setItemsCotizacion(
-      (itemsActuales) => {
-        const indiceExistente =
-          itemsActuales.findIndex(
-            (item) =>
-              item.numeroParte ===
-              nuevoItem.numeroParte
-          );
-
-        if (indiceExistente >= 0) {
-          return itemsActuales.map(
-            (item, index) =>
-              index === indiceExistente
-                ? {
-                    ...item,
-                    cantidad:
-                      Number(item.cantidad || 0) +
-                      nuevoItem.cantidad,
-                  }
-                : item
-          );
-        }
-
-        return [
-          ...itemsActuales,
-          nuevoItem,
-        ];
-      }
-    );
-
-    setCotizacionError("");
-    setCantidadCotizacion(1);
-
-    // Dejamos lista la pantalla para identificar
-    // otra refacción sin perder cliente ni carrito.
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(
-        previewUrlRef.current
-      );
-
-      previewUrlRef.current =
-        null;
-    }
-
-    setSelectedFile(null);
-    setSelectedImage(null);
-    setSelectedFileName("");
-    setResult(null);
-    setErrorMessage("");
-    setStatus("idle");
-  }
-
-  function handleQuitarItemCotizacion(
-    numeroParte
-  ) {
-    setItemsCotizacion(
-      (itemsActuales) =>
-        itemsActuales.filter(
-          (item) =>
-            item.numeroParte !==
-            numeroParte
-        )
-    );
-  }
-
-  function handleCambiarCantidadItem(
-    numeroParte,
-    nuevaCantidad
-  ) {
-    const cantidad =
-      Math.max(
-        1,
-        Number(nuevaCantidad) || 1
-      );
-
-    setItemsCotizacion(
-      (itemsActuales) =>
-        itemsActuales.map(
-          (item) =>
-            item.numeroParte ===
-            numeroParte
-              ? {
-                  ...item,
-                  cantidad,
-                }
-              : item
-        )
-    );
-  }
-
-  function calcularTotalCotizacion() {
-    return itemsCotizacion.reduce(
-      (total, item) =>
-        total +
-        Number(
-          item.precioUnitario || 0
-        ) *
-          Math.max(
-            1,
-            Number(
-              item.cantidad
-            ) || 1
-          ),
-      0
-    );
-  }
-
-  async function handleCrearCotizacion() {
-    const nombre =
-      clienteNombre.trim();
-
-    const telefono =
-      clienteTelefono.trim();
-
     if (
       !nombre ||
       !telefono
     ) {
       setCotizacionError(
         "Escribe el nombre y el teléfono del cliente."
-      );
-
-      return;
-    }
-
-    if (
-      itemsCotizacion.length === 0
-    ) {
-      setCotizacionError(
-        "Agrega al menos una refacción a la cotización."
       );
 
       return;
@@ -596,30 +459,32 @@ function App() {
                 telefonoCliente:
                   telefono,
 
-                items:
-                  itemsCotizacion.map(
-                    (item) => ({
-                      numeroParte:
-                        item.numeroParte,
+                items: [
+                  {
+                    numeroParte:
+                      result
+                        .inventory
+                        .numeroParte,
 
-                      descripcion:
-                        item.descripcion,
+                    descripcion:
+                      result
+                        .inventory
+                        .descripcion ||
+                      result
+                        .description ||
+                      "",
 
-                      cantidad:
-                        Math.max(
-                          1,
-                          Number(
-                            item.cantidad
-                          ) || 1
-                        ),
+                    cantidad,
 
-                      precioUnitario:
-                        Number(
-                          item.precioUnitario ||
+                    precioUnitario:
+                      Number(
+                        result
+                          .inventory
+                          .precio ||
                           0
-                        ),
-                    })
-                  ),
+                      ),
+                  },
+                ],
               }),
           }
         );
@@ -640,11 +505,6 @@ function App() {
       setCotizacionCreada(
         data.cotizacion
       );
-
-      setItemsCotizacion([]);
-      setClienteNombre("");
-      setClienteTelefono("");
-      setCantidadCotizacion(1);
     } catch (error) {
       console.error(
         "Error al crear cotización:",
@@ -768,8 +628,10 @@ function App() {
 
     setResult(null);
 
-    // No borramos cliente ni carrito: así puede
-    // cambiar de fotografía durante la misma cotización.
+    setClienteNombre("");
+
+    setClienteTelefono("");
+
     setCantidadCotizacion(1);
 
     setCotizacionError("");
@@ -1939,13 +1801,17 @@ function App() {
                       type="button"
                       className="primary-button"
                       onClick={
-                        handleAgregarACotizacion
+                        handleCrearCotizacion
                       }
                       disabled={
                         creandoCotizacion
                       }
                     >
-                      Agregar a cotización
+                      {
+                        creandoCotizacion
+                          ? "Creando cotización..."
+                          : "Crear cotización"
+                      }
                     </button>
 
                     <span>
@@ -2081,374 +1947,6 @@ function App() {
       </section>
     );
   }
-
-  // ==========================================
-  // COTIZACIÓN EN PROCESO
-  // ==========================================
-
-  function renderCotizacionEnProceso() {
-    if (
-      itemsCotizacion.length === 0
-    ) {
-      return null;
-    }
-
-    const total =
-      calcularTotalCotizacion();
-
-    return (
-      <section
-        className="panel"
-        style={{
-          marginTop: 22,
-        }}
-      >
-        <div className="panel-header">
-          <h2>
-            Cotización en proceso
-          </h2>
-
-          <p>
-            Puedes identificar y agregar más
-            refacciones antes de crear el folio.
-          </p>
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 12,
-            marginBottom: 20,
-          }}
-        >
-          <label>
-            Nombre del cliente
-
-            <input
-              type="text"
-              value={
-                clienteNombre
-              }
-              onChange={(event) =>
-                setClienteNombre(
-                  event.target.value
-                )
-              }
-              placeholder="Nombre completo"
-              disabled={
-                creandoCotizacion
-              }
-              style={{
-                width: "100%",
-                marginTop: 6,
-                padding: "10px 12px",
-                borderRadius: 8,
-                border:
-                  "1px solid #cbd5e1",
-              }}
-            />
-          </label>
-
-          <label>
-            Teléfono
-
-            <input
-              type="tel"
-              value={
-                clienteTelefono
-              }
-              onChange={(event) =>
-                setClienteTelefono(
-                  event.target.value
-                )
-              }
-              placeholder="Ejemplo: 7221234567"
-              disabled={
-                creandoCotizacion
-              }
-              style={{
-                width: "100%",
-                marginTop: 6,
-                padding: "10px 12px",
-                borderRadius: 8,
-                border:
-                  "1px solid #cbd5e1",
-              }}
-            />
-          </label>
-        </div>
-
-        <div
-          style={{
-            overflowX: "auto",
-            width: "100%",
-          }}
-        >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse:
-                "collapse",
-              minWidth: 820,
-            }}
-          >
-            <thead>
-              <tr
-                style={{
-                  background:
-                    "#123f73",
-                  color: "#ffffff",
-                }}
-              >
-                <th style={cartThStyle}>
-                  No. parte
-                </th>
-
-                <th style={cartThStyle}>
-                  Descripción
-                </th>
-
-                <th style={cartThStyle}>
-                  Cantidad
-                </th>
-
-                <th style={cartThStyle}>
-                  Precio
-                </th>
-
-                <th style={cartThStyle}>
-                  Subtotal
-                </th>
-
-                <th style={cartThStyle}>
-                  Acción
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {itemsCotizacion.map(
-                (item) => {
-                  const subtotal =
-                    Number(
-                      item.precioUnitario ||
-                      0
-                    ) *
-                    Math.max(
-                      1,
-                      Number(
-                        item.cantidad
-                      ) || 1
-                    );
-
-                  return (
-                    <tr
-                      key={
-                        item.numeroParte
-                      }
-                      style={{
-                        borderBottom:
-                          "1px solid #e2e8f0",
-                      }}
-                    >
-                      <td
-                        style={
-                          cartTdStyle
-                        }
-                      >
-                        <strong>
-                          {
-                            item.numeroParte
-                          }
-                        </strong>
-                      </td>
-
-                      <td
-                        style={
-                          cartTdStyle
-                        }
-                      >
-                        {
-                          item.descripcion
-                        }
-                      </td>
-
-                      <td
-                        style={
-                          cartTdStyle
-                        }
-                      >
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={
-                            item.cantidad
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            handleCambiarCantidadItem(
-                              item.numeroParte,
-                              event.target.value
-                            )
-                          }
-                          disabled={
-                            creandoCotizacion
-                          }
-                          style={{
-                            width: 80,
-                            padding:
-                              "8px 10px",
-                            borderRadius:
-                              8,
-                            border:
-                              "1px solid #cbd5e1",
-                          }}
-                        />
-                      </td>
-
-                      <td
-                        style={
-                          cartTdStyle
-                        }
-                      >
-                        {formatPrice(
-                          item.precioUnitario
-                        )}
-                      </td>
-
-                      <td
-                        style={
-                          cartTdStyle
-                        }
-                      >
-                        <strong>
-                          {formatPrice(
-                            subtotal
-                          )}
-                        </strong>
-                      </td>
-
-                      <td
-                        style={
-                          cartTdStyle
-                        }
-                      >
-                        <button
-                          type="button"
-                          className="secondary-button"
-                          onClick={() =>
-                            handleQuitarItemCotizacion(
-                              item.numeroParte
-                            )
-                          }
-                          disabled={
-                            creandoCotizacion
-                          }
-                        >
-                          Quitar
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                }
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            gap: 16,
-            flexWrap: "wrap",
-            marginTop: 22,
-            paddingTop: 18,
-            borderTop:
-              "1px solid #e2e8f0",
-          }}
-        >
-          <div>
-            <strong>
-              {
-                itemsCotizacion.length
-              }{" "}
-              {
-                itemsCotizacion.length ===
-                1
-                  ? "refacción"
-                  : "refacciones"
-              }
-            </strong>
-
-            <div
-              style={{
-                marginTop: 5,
-                fontSize: 20,
-              }}
-            >
-              Total:{" "}
-              <strong
-                style={{
-                  color:
-                    "#123f73",
-                }}
-              >
-                {formatPrice(
-                  total
-                )}
-              </strong>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="primary-button"
-            onClick={
-              handleCrearCotizacion
-            }
-            disabled={
-              creandoCotizacion
-            }
-          >
-            {
-              creandoCotizacion
-                ? "Creando cotización..."
-                : "Crear cotización"
-            }
-          </button>
-        </div>
-
-        {cotizacionError && (
-          <p
-            className="error-message"
-            style={{
-              marginTop: 14,
-            }}
-          >
-            {cotizacionError}
-          </p>
-        )}
-      </section>
-    );
-  }
-
-  const cartThStyle = {
-    padding: "12px 14px",
-    textAlign: "left",
-    whiteSpace: "nowrap",
-  };
-
-  const cartTdStyle = {
-    padding: "12px 14px",
-    verticalAlign: "middle",
-  };
 
   // ==========================================
   // COTIZACIÓN FORMAL
@@ -3180,8 +2678,6 @@ function App() {
             />
 
             {renderIdentifySection()}
-
-            {renderCotizacionEnProceso()}
           </>
         );
 
@@ -3194,8 +2690,6 @@ function App() {
             )}
 
             {renderIdentifySection()}
-
-            {renderCotizacionEnProceso()}
           </>
         );
 
@@ -3206,10 +2700,7 @@ function App() {
   return <Historial />;
 
       case "reports":
-        return renderTemporaryPage(
-          "Reportes",
-          "Consulta indicadores y estadísticas."
-        );
+  return <Reportes />;
 
       case "settings":
         return renderTemporaryPage(
@@ -3225,8 +2716,6 @@ function App() {
             />
 
             {renderIdentifySection()}
-
-            {renderCotizacionEnProceso()}
           </>
         );
     }
