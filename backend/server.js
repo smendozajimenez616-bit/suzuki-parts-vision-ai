@@ -542,62 +542,16 @@ async function obtenerOCrearCliente(
 // GENERAR FOLIO
 // ==========================================
 
-function generarFolioCotizacion() {
-  const ahora =
-    new Date();
+async function generarFolioCotizacion() {
+  const ultima = await dbGet(`
+    SELECT
+      MAX(CAST(folio AS INTEGER)) AS ultimo
+    FROM cotizaciones
+    WHERE folio GLOB '[0-9]*'
+  `);
 
-  const fecha = [
-    ahora.getFullYear(),
-
-    String(
-      ahora.getMonth() + 1
-    ).padStart(
-      2,
-      "0"
-    ),
-
-    String(
-      ahora.getDate()
-    ).padStart(
-      2,
-      "0"
-    ),
-  ].join("");
-
-  const hora = [
-    String(
-      ahora.getHours()
-    ).padStart(
-      2,
-      "0"
-    ),
-
-    String(
-      ahora.getMinutes()
-    ).padStart(
-      2,
-      "0"
-    ),
-
-    String(
-      ahora.getSeconds()
-    ).padStart(
-      2,
-      "0"
-    ),
-  ].join("");
-
-  const aleatorio =
-    Math.floor(
-      100 +
-        Math.random() *
-          900
-    );
-
-  return (
-    `COT-${fecha}-` +
-    `${hora}-` +
-    `${aleatorio}`
+  return String(
+    Number(ultima?.ultimo || 0) + 1
   );
 }
 
@@ -1062,7 +1016,7 @@ app.post(
         subtotal;
 
       const folio =
-        generarFolioCotizacion();
+  await generarFolioCotizacion();
 
       await dbRun(
         "BEGIN TRANSACTION"
