@@ -155,6 +155,64 @@ function Reportes() {
     resumen.estados.Vencida
   );
 
+  const motivosNoCompra = useMemo(() => {
+    const motivosBase = [
+      "Precio alto",
+      "Sin presupuesto",
+      "Compró con otro proveedor",
+      "Tiempo de entrega",
+      "Pieza incorrecta / no requerida",
+      "Ya no requiere la pieza",
+      "No respondió / sin seguimiento",
+      "Otro",
+    ];
+
+    const conteo = {};
+
+    motivosBase.forEach((motivo) => {
+      conteo[motivo] = 0;
+    });
+
+    cotizaciones.forEach((item) => {
+      if (item.estado !== "Rechazada") {
+        return;
+      }
+
+      const motivo = String(
+        item.motivoRechazo || ""
+      ).trim();
+
+      if (!motivo) {
+        return;
+      }
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          conteo,
+          motivo
+        )
+      ) {
+        conteo[motivo] += 1;
+      } else {
+        conteo[motivo] = 1;
+      }
+    });
+
+    return Object.entries(conteo)
+      .map(([label, value]) => ({
+        label,
+        value,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [cotizaciones]);
+
+  const maxMotivo = Math.max(
+    1,
+    ...motivosNoCompra.map(
+      (item) => item.value
+    )
+  );
+
   const barras = [
     {
       label: "Aceptadas",
@@ -455,6 +513,95 @@ function Reportes() {
                           item.color,
                         borderRadius:
                           999,
+                        transition:
+                          "width .25s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section
+        className="panel"
+        style={{ marginTop: 22 }}
+      >
+        <div className="panel-header">
+          <div>
+            <h2>
+              Motivos de no compra
+            </h2>
+
+            <p>
+              Razones registradas en las
+              cotizaciones rechazadas.
+            </p>
+          </div>
+        </div>
+
+        {cargando ? (
+          <div className="empty-result">
+            <strong>
+              Cargando motivos...
+            </strong>
+          </div>
+        ) : resumen.estados.Rechazada === 0 ? (
+          <div className="empty-result">
+            <strong>
+              Aún no hay cotizaciones rechazadas.
+            </strong>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gap: 16,
+              marginTop: 20,
+            }}
+          >
+            {motivosNoCompra.map((item) => {
+              const porcentaje =
+                (item.value / maxMotivo) * 100;
+
+              return (
+                <div key={item.label}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      gap: 12,
+                      marginBottom: 7,
+                    }}
+                  >
+                    <strong>
+                      {item.label}
+                    </strong>
+
+                    <strong>
+                      {item.value}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={{
+                      width: "100%",
+                      height: 14,
+                      background: "#e2e8f0",
+                      borderRadius: 999,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width:
+                          `${porcentaje}%`,
+                        height: "100%",
+                        background: "#dc2626",
+                        borderRadius: 999,
                         transition:
                           "width .25s ease",
                       }}
