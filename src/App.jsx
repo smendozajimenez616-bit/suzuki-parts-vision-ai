@@ -87,6 +87,38 @@ function App() {
   ] = useState(1);
 
   const [
+    vinVehiculo,
+    setVinVehiculo,
+  ] = useState("");
+
+  // ==========================================
+  // INSTALACIÓN SUZUKI TOLUCA
+  // ==========================================
+
+  const TARIFA_MANO_OBRA_MOSTRADOR =
+    550;
+
+  const [
+    operacionInstalacion,
+    setOperacionInstalacion,
+  ] = useState("");
+
+  const [
+    tiempoInstalacion,
+    setTiempoInstalacion,
+  ] = useState("");
+
+  const [
+    fuenteTiempoInstalacion,
+    setFuenteTiempoInstalacion,
+  ] = useState("");
+
+  const [
+    conceptosAdicionales,
+    setConceptosAdicionales,
+  ] = useState("");
+
+  const [
     creandoCotizacion,
     setCreandoCotizacion,
   ] = useState(false);
@@ -240,6 +272,12 @@ function App() {
     setVersionVehiculo("");
 
     setCantidadCotizacion(1);
+
+    setVinVehiculo("");
+    setOperacionInstalacion("");
+    setTiempoInstalacion("");
+    setFuenteTiempoInstalacion("");
+    setConceptosAdicionales("");
 
     // Limpiar las dos preguntas
     setInteresaTomaCuenta("");
@@ -424,6 +462,9 @@ function App() {
     const version =
       versionVehiculo.trim();
 
+    const vin =
+      vinVehiculo.trim();
+
     const cantidad =
       Math.max(
         1,
@@ -440,7 +481,7 @@ function App() {
       !version
     ) {
       setCotizacionError(
-        "Completa nombre, teléfono, modelo, año y versión del vehículo."
+        "Completa nombre, teléfono, modelo, año y versión del vehículo. El VIN es recomendado, pero no obligatorio."
       );
 
       return;
@@ -490,6 +531,9 @@ function App() {
 
               versionVehiculo:
                 version,
+
+              vinVehiculo:
+                vin,
 
               // NUEVO
               interesaTomaCuenta:
@@ -661,6 +705,12 @@ function App() {
 
     setCantidadCotizacion(1);
 
+    setVinVehiculo("");
+    setOperacionInstalacion("");
+    setTiempoInstalacion("");
+    setFuenteTiempoInstalacion("");
+    setConceptosAdicionales("");
+
     setInteresaTomaCuenta("");
     setInteresaPromociones("");
 
@@ -719,6 +769,51 @@ function App() {
     ).format(
       Number(value || 0)
     );
+  }
+
+  function obtenerDatosInstalacion(
+    totalRefacciones = 0
+  ) {
+    const horas =
+      Number(tiempoInstalacion);
+
+    const adicionales =
+      Math.max(
+        0,
+        Number(
+          conceptosAdicionales || 0
+        )
+      );
+
+    const tiempoValido =
+      Number.isFinite(horas) &&
+      horas > 0 &&
+      Boolean(
+        fuenteTiempoInstalacion
+      );
+
+    const manoObra =
+      tiempoValido
+        ? horas *
+          TARIFA_MANO_OBRA_MOSTRADOR
+        : null;
+
+    const totalInstalado =
+      tiempoValido
+        ? Number(
+            totalRefacciones || 0
+          ) +
+          manoObra +
+          adicionales
+        : null;
+
+    return {
+      horas,
+      adicionales,
+      tiempoValido,
+      manoObra,
+      totalInstalado,
+    };
   }
 
   function formatDate(
@@ -1162,6 +1257,17 @@ function App() {
 
             <div>
               <div class="label">
+                VIN
+              </div>
+              <strong>
+                ${escapeHtml(
+                  vinVehiculo || "No proporcionado"
+                )}
+              </strong>
+            </div>
+
+            <div>
+              <div class="label">
                 Modelo
               </div>
               <strong>
@@ -1247,6 +1353,128 @@ function App() {
             </span>
           </div>
 
+        </div>
+
+        <div class="client">
+          <h2>
+            Instalación en Suzuki Toluca
+          </h2>
+
+          <p>
+            <strong>
+              Operación de instalación:
+            </strong>
+            ${escapeHtml(
+              operacionInstalacion ||
+                "Pendiente de validación por Servicio"
+            )}
+          </p>
+
+          <p>
+            <strong>
+              Tiempo estándar:
+            </strong>
+            ${
+              obtenerDatosInstalacion(
+                cotizacionCreada.total
+              ).tiempoValido
+                ? `${escapeHtml(
+                    tiempoInstalacion
+                  )} h`
+                : "Tiempo de instalación pendiente de validación por Servicio"
+            }
+          </p>
+
+          <p>
+            <strong>
+              Fuente del tiempo:
+            </strong>
+            ${escapeHtml(
+              fuenteTiempoInstalacion ||
+                "Pendiente de validación"
+            )}
+          </p>
+
+          <p>
+            <strong>
+              Tarifa especial:
+            </strong>
+            $550.00 por hora, IVA incluido
+          </p>
+
+          <p>
+            <strong>
+              Total mano de obra:
+            </strong>
+            ${
+              obtenerDatosInstalacion(
+                cotizacionCreada.total
+              ).tiempoValido
+                ? escapeHtml(
+                    formatPrice(
+                      obtenerDatosInstalacion(
+                        cotizacionCreada.total
+                      ).manoObra
+                    )
+                  )
+                : "Pendiente de validación"
+            }
+          </p>
+
+          ${
+            Number(
+              conceptosAdicionales || 0
+            ) > 0
+              ? `
+                <p>
+                  <strong>
+                    Conceptos adicionales autorizados:
+                  </strong>
+                  ${escapeHtml(
+                    formatPrice(
+                      Number(
+                        conceptosAdicionales
+                      )
+                    )
+                  )}
+                </p>
+              `
+              : ""
+          }
+
+          <p>
+            <strong>
+              Total instalado:
+            </strong>
+            ${
+              obtenerDatosInstalacion(
+                cotizacionCreada.total
+              ).tiempoValido
+                ? escapeHtml(
+                    formatPrice(
+                      obtenerDatosInstalacion(
+                        cotizacionCreada.total
+                      ).totalInstalado
+                    )
+                  )
+                : "Pendiente de validación"
+            }
+          </p>
+
+          <p
+            style="
+              margin-top: 18px;
+              padding: 12px;
+              border-radius: 8px;
+              background: #eff6ff;
+              border: 1px solid #bfdbfe;
+              color: #123f73;
+              font-weight: 700;
+            "
+          >
+            Tarifa especial de instalación para clientes de mostrador:
+            $550 por hora, IVA incluido.
+          </p>
         </div>
 
         <div class="conditions">
@@ -1821,6 +2049,39 @@ function App() {
                     </label>
 
                     <label>
+                      VIN (recomendado)
+
+                      <input
+                        type="text"
+                        value={
+                          vinVehiculo
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setVinVehiculo(
+                            event.target.value
+                              .toUpperCase()
+                          )
+                        }
+                        placeholder="Recomendado: 17 caracteres"
+                        maxLength="17"
+                        disabled={
+                          creandoCotizacion
+                        }
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding:
+                            "10px 12px",
+                          borderRadius: 8,
+                          border:
+                            "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+
+                    <label>
                       Modelo Suzuki
 
                       <input
@@ -1945,6 +2206,308 @@ function App() {
                       />
                     </label>
 
+                  </div>
+
+                  {/* ================================= */}
+                  {/* INSTALACIÓN SUZUKI TOLUCA */}
+                  {/* ================================= */}
+
+                  <div
+                    style={{
+                      marginTop: 20,
+                      padding: 18,
+                      background:
+                        "#f8fafc",
+                      border:
+                        "1px solid #dbe3ec",
+                      borderRadius: 12,
+                    }}
+                  >
+                    <h4
+                      style={{
+                        marginTop: 0,
+                        marginBottom: 6,
+                        color: "#123f73",
+                      }}
+                    >
+                      Instalación en Suzuki Toluca
+                    </h4>
+
+                    <p
+                      style={{
+                        marginTop: 0,
+                        color: "#64748b",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Toda cotización de mostrador
+                      presenta la opción de instalación.
+                      El tiempo solo debe capturarse
+                      cuando provenga de una fuente
+                      autorizada.
+                    </p>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(190px, 1fr))",
+                        gap: 12,
+                      }}
+                    >
+                      <label>
+                        Operación de instalación
+
+                        <input
+                          type="text"
+                          value={
+                            operacionInstalacion
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setOperacionInstalacion(
+                              event.target.value
+                            )
+                          }
+                          placeholder="Ejemplo: Reemplazo de..."
+                          disabled={
+                            creandoCotizacion
+                          }
+                          style={{
+                            width: "100%",
+                            marginTop: 6,
+                            padding:
+                              "10px 12px",
+                            borderRadius: 8,
+                            border:
+                              "1px solid #cbd5e1",
+                          }}
+                        />
+                      </label>
+
+                      <label>
+                        Tiempo autorizado (horas)
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={
+                            tiempoInstalacion
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setTiempoInstalacion(
+                              event.target.value
+                            )
+                          }
+                          placeholder="Ejemplo: 1.5"
+                          disabled={
+                            creandoCotizacion
+                          }
+                          style={{
+                            width: "100%",
+                            marginTop: 6,
+                            padding:
+                              "10px 12px",
+                            borderRadius: 8,
+                            border:
+                              "1px solid #cbd5e1",
+                          }}
+                        />
+                      </label>
+
+                      <label>
+                        Fuente del tiempo
+
+                        <select
+                          value={
+                            fuenteTiempoInstalacion
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setFuenteTiempoInstalacion(
+                              event.target.value
+                            )
+                          }
+                          disabled={
+                            creandoCotizacion
+                          }
+                          style={{
+                            width: "100%",
+                            marginTop: 6,
+                            padding:
+                              "10px 12px",
+                            borderRadius: 8,
+                            border:
+                              "1px solid #cbd5e1",
+                            background:
+                              "#ffffff",
+                          }}
+                        >
+                          <option value="">
+                            Pendiente de validación
+                          </option>
+
+                          <option value="Tiempo estándar oficial de Suzuki">
+                            Tiempo estándar oficial de Suzuki
+                          </option>
+
+                          <option value="DMS Quiter">
+                            DMS Quiter
+                          </option>
+
+                          <option value="Tabla interna validada por el jefe de Taller">
+                            Tabla interna validada por el jefe de Taller
+                          </option>
+
+                          <option value="Historial de operaciones previamente autorizadas">
+                            Historial de operaciones previamente autorizadas
+                          </option>
+                        </select>
+                      </label>
+
+                      <label>
+                        Conceptos adicionales autorizados
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={
+                            conceptosAdicionales
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setConceptosAdicionales(
+                              event.target.value
+                            )
+                          }
+                          placeholder="0.00"
+                          disabled={
+                            creandoCotizacion
+                          }
+                          style={{
+                            width: "100%",
+                            marginTop: 6,
+                            padding:
+                              "10px 12px",
+                            borderRadius: 8,
+                            border:
+                              "1px solid #cbd5e1",
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 14,
+                        padding: 12,
+                        borderRadius: 9,
+                        background:
+                          "#eff6ff",
+                        border:
+                          "1px solid #bfdbfe",
+                        color: "#123f73",
+                        fontWeight: 700,
+                      }}
+                    >
+                      Tarifa especial de instalación
+                      para clientes de mostrador:
+                      $550 por hora, IVA incluido.
+                    </div>
+
+                    {!obtenerDatosInstalacion(
+                      Number(
+                        result.inventory.precio ||
+                          0
+                      ) *
+                        Math.max(
+                          1,
+                          Number(
+                            cantidadCotizacion
+                          ) || 1
+                        )
+                    ).tiempoValido && (
+                      <p
+                        style={{
+                          marginBottom: 0,
+                          color: "#92400e",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Tiempo de instalación
+                        pendiente de validación por
+                        Servicio. No se generará un
+                        total instalado definitivo.
+                      </p>
+                    )}
+
+                    {obtenerDatosInstalacion(
+                      Number(
+                        result.inventory.precio ||
+                          0
+                      ) *
+                        Math.max(
+                          1,
+                          Number(
+                            cantidadCotizacion
+                          ) || 1
+                        )
+                    ).tiempoValido && (
+                      <div
+                        style={{
+                          marginTop: 14,
+                          display: "grid",
+                          gap: 6,
+                        }}
+                      >
+                        <div>
+                          Mano de obra:{" "}
+                          <strong>
+                            {formatPrice(
+                              obtenerDatosInstalacion(
+                                Number(
+                                  result.inventory
+                                    .precio || 0
+                                ) *
+                                  Math.max(
+                                    1,
+                                    Number(
+                                      cantidadCotizacion
+                                    ) || 1
+                                  )
+                              ).manoObra
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          Total instalado:{" "}
+                          <strong>
+                            {formatPrice(
+                              obtenerDatosInstalacion(
+                                Number(
+                                  result.inventory
+                                    .precio || 0
+                                ) *
+                                  Math.max(
+                                    1,
+                                    Number(
+                                      cantidadCotizacion
+                                    ) || 1
+                                  )
+                              ).totalInstalado
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* ================================= */}
@@ -2607,6 +3170,21 @@ function App() {
                     fontSize: 13,
                   }}
                 >
+                  VIN
+                </div>
+
+                <strong>
+                  {vinVehiculo || "—"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
                   Modelo
                 </div>
 
@@ -2897,6 +3475,188 @@ function App() {
                 </strong>
               </div>
             </div>
+          </div>
+
+          {/* ================================= */}
+          {/* INSTALACIÓN SUZUKI TOLUCA */}
+          {/* ================================= */}
+
+          <div
+            style={{
+              marginBottom: 24,
+              padding: 20,
+              background: "#f8fafc",
+              border:
+                "1px solid #dbe3ec",
+              borderRadius: 12,
+            }}
+          >
+            <h3
+              style={{
+                marginTop: 0,
+                color: "#123f73",
+              }}
+            >
+              Instalación en Suzuki Toluca
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(210px, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Operación
+                </div>
+
+                <strong>
+                  {operacionInstalacion ||
+                    "Pendiente de validación por Servicio"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Tiempo estándar
+                </div>
+
+                <strong>
+                  {obtenerDatosInstalacion(
+                    cotizacion.total || 0
+                  ).tiempoValido
+                    ? `${tiempoInstalacion} h`
+                    : "Pendiente de validación por Servicio"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Fuente del tiempo
+                </div>
+
+                <strong>
+                  {fuenteTiempoInstalacion ||
+                    "Pendiente de validación"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Tarifa especial
+                </div>
+
+                <strong>
+                  $550.00 / hora
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Mano de obra
+                </div>
+
+                <strong>
+                  {obtenerDatosInstalacion(
+                    cotizacion.total || 0
+                  ).tiempoValido
+                    ? formatPrice(
+                        obtenerDatosInstalacion(
+                          cotizacion.total || 0
+                        ).manoObra
+                      )
+                    : "Pendiente de validación"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Total instalado
+                </div>
+
+                <strong
+                  style={{
+                    color: "#123f73",
+                  }}
+                >
+                  {obtenerDatosInstalacion(
+                    cotizacion.total || 0
+                  ).tiempoValido
+                    ? formatPrice(
+                        obtenerDatosInstalacion(
+                          cotizacion.total || 0
+                        ).totalInstalado
+                      )
+                    : "Pendiente de validación"}
+                </strong>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 16,
+                padding: 12,
+                borderRadius: 9,
+                background: "#eff6ff",
+                border:
+                  "1px solid #bfdbfe",
+                color: "#123f73",
+                fontWeight: 700,
+              }}
+            >
+              Tarifa especial de instalación
+              para clientes de mostrador:
+              $550 por hora, IVA incluido.
+            </div>
+
+            {!obtenerDatosInstalacion(
+              cotizacion.total || 0
+            ).tiempoValido && (
+              <p
+                style={{
+                  marginBottom: 0,
+                  color: "#92400e",
+                  fontWeight: 700,
+                }}
+              >
+                Tiempo de instalación pendiente
+                de validación por Servicio. El
+                total instalado no es definitivo.
+              </p>
+            )}
           </div>
 
           {/* ================================= */}
