@@ -108,12 +108,17 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS cotizaciones (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+
       folio TEXT NOT NULL UNIQUE,
       clienteId INTEGER NOT NULL,
+
       fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
       estado TEXT NOT NULL DEFAULT 'Pendiente',
+
       subtotal REAL NOT NULL DEFAULT 0,
       total REAL NOT NULL DEFAULT 0,
+
       observaciones TEXT DEFAULT '',
 
       motivoRechazo TEXT DEFAULT '',
@@ -122,6 +127,9 @@ db.serialize(() => {
       modeloVehiculo TEXT DEFAULT '',
       anioVehiculo TEXT DEFAULT '',
       versionVehiculo TEXT DEFAULT '',
+
+      interesaTomaCuenta INTEGER NOT NULL DEFAULT 0,
+      interesaPromociones INTEGER NOT NULL DEFAULT 0,
 
       FOREIGN KEY (clienteId)
         REFERENCES clientes(id)
@@ -150,9 +158,9 @@ db.serialize(() => {
           (columna) => columna.name
         );
 
-      // ------------------------------------------
-      // MOTIVO DE RECHAZO
-      // ------------------------------------------
+      // ======================================
+      // MOTIVOS DE RECHAZO
+      // ======================================
 
       if (
         !nombresColumnas.includes(
@@ -208,9 +216,9 @@ db.serialize(() => {
         );
       }
 
-      // ------------------------------------------
+      // ======================================
       // DATOS DEL VEHÍCULO
-      // ------------------------------------------
+      // ======================================
 
       if (
         !nombresColumnas.includes(
@@ -292,6 +300,66 @@ db.serialize(() => {
           }
         );
       }
+
+      // ======================================
+      // INTERÉS COMERCIAL
+      // ======================================
+
+      if (
+        !nombresColumnas.includes(
+          "interesaTomaCuenta"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN interesaTomaCuenta
+          INTEGER NOT NULL DEFAULT 0
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando interesaTomaCuenta:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna interesaTomaCuenta agregada."
+            );
+          }
+        );
+      }
+
+      if (
+        !nombresColumnas.includes(
+          "interesaPromociones"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN interesaPromociones
+          INTEGER NOT NULL DEFAULT 0
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando interesaPromociones:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna interesaPromociones agregada."
+            );
+          }
+        );
+      }
     }
   );
 
@@ -316,11 +384,17 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS cotizacion_detalle (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+
       cotizacionId INTEGER NOT NULL,
+
       numeroParte TEXT NOT NULL,
+
       descripcion TEXT NOT NULL DEFAULT '',
+
       cantidad REAL NOT NULL DEFAULT 1,
+
       precioUnitario REAL NOT NULL DEFAULT 0,
+
       subtotal REAL NOT NULL DEFAULT 0,
 
       FOREIGN KEY (cotizacionId)
@@ -351,17 +425,23 @@ db.serialize(() => {
       fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
       clienteId INTEGER,
+
       nombreCliente TEXT NOT NULL DEFAULT '',
+
       telefonoCliente TEXT NOT NULL DEFAULT '',
 
       cotizacionId INTEGER,
+
       folioCotizacion TEXT DEFAULT '',
 
       numeroParte TEXT NOT NULL,
+
       descripcion TEXT NOT NULL DEFAULT '',
 
       cantidad REAL NOT NULL DEFAULT 1,
+
       precioUnitario REAL NOT NULL DEFAULT 0,
+
       subtotal REAL NOT NULL DEFAULT 0,
 
       estado TEXT NOT NULL DEFAULT 'Pendiente',
@@ -390,6 +470,86 @@ db.serialize(() => {
     CREATE INDEX IF NOT EXISTS
     idx_historial_cliente
     ON historial_pedidos(nombreCliente)
+  `);
+
+  // ==========================================
+  // REFERIDOS COMERCIALES
+  // SEMINUEVOS / VENTAS
+  // ==========================================
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS referidos_comerciales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+      fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+      area TEXT NOT NULL,
+
+      cotizacionId INTEGER NOT NULL,
+
+      folioCotizacion TEXT NOT NULL DEFAULT '',
+
+      clienteId INTEGER,
+
+      nombreCliente TEXT NOT NULL DEFAULT '',
+
+      telefonoCliente TEXT NOT NULL DEFAULT '',
+
+      modeloVehiculo TEXT NOT NULL DEFAULT '',
+
+      anioVehiculo TEXT NOT NULL DEFAULT '',
+
+      versionVehiculo TEXT NOT NULL DEFAULT '',
+
+      mensaje TEXT NOT NULL DEFAULT '',
+
+      estadoSeguimiento TEXT NOT NULL DEFAULT 'Pendiente',
+
+      FOREIGN KEY (cotizacionId)
+        REFERENCES cotizaciones(id),
+
+      FOREIGN KEY (clienteId)
+        REFERENCES clientes(id),
+
+      UNIQUE (
+        cotizacionId,
+        area
+      )
+    )
+  `);
+
+  // ==========================================
+  // ÍNDICES DE REFERIDOS
+  // ==========================================
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS
+    idx_referidos_area
+    ON referidos_comerciales(area)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS
+    idx_referidos_fecha
+    ON referidos_comerciales(fecha)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS
+    idx_referidos_cotizacion
+    ON referidos_comerciales(cotizacionId)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS
+    idx_referidos_cliente
+    ON referidos_comerciales(nombreCliente)
+  `);
+
+  db.run(`
+    CREATE INDEX IF NOT EXISTS
+    idx_referidos_estado
+    ON referidos_comerciales(estadoSeguimiento)
   `);
 });
 

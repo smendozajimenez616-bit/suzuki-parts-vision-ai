@@ -905,6 +905,19 @@ const versionVehiculo =
     req.body?.versionVehiculo ||
       ""
   ).trim();
+  const interesaTomaCuenta =
+  req.body?.interesaTomaCuenta === true ||
+  req.body?.interesaTomaCuenta === 1 ||
+  req.body?.interesaTomaCuenta === "1" ||
+  req.body?.interesaTomaCuenta === "Si" ||
+  req.body?.interesaTomaCuenta === "Sí";
+
+const interesaPromociones =
+  req.body?.interesaPromociones === true ||
+  req.body?.interesaPromociones === 1 ||
+  req.body?.interesaPromociones === "1" ||
+  req.body?.interesaPromociones === "Si" ||
+  req.body?.interesaPromociones === "Sí";
       const items =
         Array.isArray(
           req.body?.items
@@ -1048,34 +1061,38 @@ const versionVehiculo =
         );
 
       const resultadoCotizacion =
-        await dbRun(
-          `
-            INSERT INTO cotizaciones
-            (
-              folio,
-              clienteId,
-              estado,
-              subtotal,
-              total,
-              observaciones,
-              modeloVehiculo,
-              anioVehiculo,
-              versionVehiculo
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `,
-          [
-            folio,
-            cliente.id,
-            "Pendiente",
-            subtotal,
-            total,
-            observaciones,
-            modeloVehiculo,
-            anioVehiculo,
-            versionVehiculo,
-          ]
-        );
+  await dbRun(
+    `
+      INSERT INTO cotizaciones
+      (
+        folio,
+        clienteId,
+        estado,
+        subtotal,
+        total,
+        observaciones,
+        modeloVehiculo,
+        anioVehiculo,
+        versionVehiculo,
+        interesaTomaCuenta,
+        interesaPromociones
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      folio,
+      cliente.id,
+      "Pendiente",
+      subtotal,
+      total,
+      observaciones,
+      modeloVehiculo,
+      anioVehiculo,
+      versionVehiculo,
+      interesaTomaCuenta ? 1 : 0,
+      interesaPromociones ? 1 : 0,
+    ]
+  );
 
       const cotizacionId =
         resultadoCotizacion.lastID;
@@ -1145,6 +1162,90 @@ const versionVehiculo =
         );
       }
 
+      // ==========================================
+      // REFERIDO A SEMINUEVOS
+      // ==========================================
+
+      if (interesaTomaCuenta) {
+        const mensajeSeminuevos =
+          "Cliente interesado en conocer cuánto se le puede ofrecer por su vehículo como toma a cuenta.";
+
+        await dbRun(
+          `
+            INSERT OR IGNORE INTO referidos_comerciales
+            (
+              area,
+              cotizacionId,
+              folioCotizacion,
+              clienteId,
+              nombreCliente,
+              telefonoCliente,
+              modeloVehiculo,
+              anioVehiculo,
+              versionVehiculo,
+              mensaje,
+              estadoSeguimiento
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            "Seminuevos",
+            cotizacionId,
+            folio,
+            cliente.id,
+            cliente.nombre,
+            cliente.telefono,
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            mensajeSeminuevos,
+            "Pendiente",
+          ]
+        );
+      }
+
+      // ==========================================
+      // REFERIDO A VENTAS
+      // ==========================================
+
+      if (interesaPromociones) {
+        const mensajeVentas =
+          "Cliente interesado en recibir información y promociones comerciales de autos nuevos.";
+
+        await dbRun(
+          `
+            INSERT OR IGNORE INTO referidos_comerciales
+            (
+              area,
+              cotizacionId,
+              folioCotizacion,
+              clienteId,
+              nombreCliente,
+              telefonoCliente,
+              modeloVehiculo,
+              anioVehiculo,
+              versionVehiculo,
+              mensaje,
+              estadoSeguimiento
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            "Ventas",
+            cotizacionId,
+            folio,
+            cliente.id,
+            cliente.nombre,
+            cliente.telefono,
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            mensajeVentas,
+            "Pendiente",
+          ]
+        );
+      }
+
       await dbRun(
         "COMMIT"
       );
@@ -1180,6 +1281,9 @@ const versionVehiculo =
   modeloVehiculo,
   anioVehiculo,
   versionVehiculo,
+
+  interesaTomaCuenta,
+  interesaPromociones,
 
   items:
     itemsNormalizados,
@@ -1244,6 +1348,8 @@ c.detalleMotivoRechazo,
 c.modeloVehiculo,
 c.anioVehiculo,
 c.versionVehiculo,
+c.interesaTomaCuenta,
+c.interesaPromociones,
 
             cl.id
               AS clienteId,
@@ -1332,6 +1438,8 @@ c.detalleMotivoRechazo,
 c.modeloVehiculo,
 c.anioVehiculo,
 c.versionVehiculo,
+c.interesaTomaCuenta,
+c.interesaPromociones,
 
             cl.id
               AS clienteId,
@@ -1815,6 +1923,224 @@ app.get(
           mensaje:
             error.message ||
             "No se pudo consultar el historial.",
+        });
+    }
+  }
+);
+
+// ==========================================
+// REFERIDOS COMERCIALES
+// ==========================================
+
+app.get(
+  "/api/referidos",
+  async (req, res) => {
+    try {
+      const area =
+        String(
+          req.query.area || ""
+        ).trim();
+
+      const buscar =
+        String(
+          req.query.buscar || ""
+        ).trim();
+
+      const condiciones = [];
+      const params = [];
+
+      if (
+        area === "Seminuevos" ||
+        area === "Ventas"
+      ) {
+        condiciones.push("area = ?");
+        params.push(area);
+      }
+
+      if (buscar) {
+        condiciones.push(`
+          (
+            nombreCliente LIKE ?
+            OR telefonoCliente LIKE ?
+            OR folioCotizacion LIKE ?
+            OR modeloVehiculo LIKE ?
+            OR anioVehiculo LIKE ?
+            OR versionVehiculo LIKE ?
+          )
+        `);
+
+        const patron = `%${buscar}%`;
+
+        params.push(
+          patron,
+          patron,
+          patron,
+          patron,
+          patron,
+          patron
+        );
+      }
+
+      const whereSql =
+        condiciones.length > 0
+          ? `WHERE ${condiciones.join(" AND ")}`
+          : "";
+
+      const datos =
+        await dbAll(
+          `
+            SELECT
+              id,
+              fecha,
+              area,
+              cotizacionId,
+              folioCotizacion,
+              clienteId,
+              nombreCliente,
+              telefonoCliente,
+              modeloVehiculo,
+              anioVehiculo,
+              versionVehiculo,
+              mensaje,
+              estadoSeguimiento
+
+            FROM referidos_comerciales
+
+            ${whereSql}
+
+            ORDER BY
+              fecha DESC,
+              id DESC
+          `,
+          params
+        );
+
+      return res.json({
+        success: true,
+        datos,
+      });
+    } catch (error) {
+      console.error(
+        "Error al consultar referidos:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+          mensaje:
+            error.message ||
+            "No se pudieron consultar los referidos.",
+        });
+    }
+  }
+);
+// ==========================================
+// ACTUALIZAR SEGUIMIENTO DE REFERIDO
+// ==========================================
+
+app.patch(
+  "/api/referidos/:id/estado",
+  async (req, res) => {
+    try {
+      const id =
+        Number(
+          req.params.id
+        );
+
+      const estadoSeguimiento =
+        String(
+          req.body?.estadoSeguimiento ||
+            ""
+        ).trim();
+
+      const estadosPermitidos = [
+        "Pendiente",
+        "Contactado",
+        "Atendido",
+        "Cerrado",
+      ];
+
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            mensaje:
+              "Identificador de referido inválido.",
+          });
+      }
+
+      if (
+        !estadosPermitidos.includes(
+          estadoSeguimiento
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            mensaje:
+              "Estado de seguimiento inválido.",
+          });
+      }
+
+      const resultado =
+        await dbRun(
+          `
+            UPDATE referidos_comerciales
+
+            SET estadoSeguimiento = ?
+
+            WHERE id = ?
+          `,
+          [
+            estadoSeguimiento,
+            id,
+          ]
+        );
+
+      if (
+        resultado.changes === 0
+      ) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+
+            mensaje:
+              "No se encontró el referido.",
+          });
+      }
+
+      return res.json({
+        success: true,
+
+        mensaje:
+          "Seguimiento actualizado correctamente.",
+
+        estadoSeguimiento,
+      });
+    } catch (error) {
+      console.error(
+        "Error al actualizar seguimiento:",
+        error
+      );
+
+      return res
+        .status(500)
+        .json({
+          success: false,
+
+          mensaje:
+            error.message ||
+            "No se pudo actualizar el seguimiento.",
         });
     }
   }

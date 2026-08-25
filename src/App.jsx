@@ -102,6 +102,20 @@ function App() {
   ] = useState(null);
 
   // ==========================================
+  // INTERÉS COMERCIAL
+  // ==========================================
+
+  const [
+    interesaTomaCuenta,
+    setInteresaTomaCuenta,
+  ] = useState("");
+
+  const [
+    interesaPromociones,
+    setInteresaPromociones,
+  ] = useState("");
+
+  // ==========================================
   // HISTORIAL
   // ==========================================
 
@@ -131,9 +145,7 @@ function App() {
 
   useEffect(() => {
     return () => {
-      if (
-        previewUrlRef.current
-      ) {
+      if (previewUrlRef.current) {
         URL.revokeObjectURL(
           previewUrlRef.current
         );
@@ -142,13 +154,11 @@ function App() {
   }, []);
 
   // ==========================================
-  // CARGAR HISTORIAL AL ENTRAR
+  // CARGAR HISTORIAL
   // ==========================================
 
   useEffect(() => {
-    if (
-      activePage === "history"
-    ) {
+    if (activePage === "history") {
       cargarHistorial();
     }
   }, [activePage]);
@@ -169,9 +179,7 @@ function App() {
     fileInputRef.current?.click();
   }
 
-  function handleImageChange(
-    event
-  ) {
+  function handleImageChange(event) {
     const file =
       event.target.files?.[0];
 
@@ -180,16 +188,13 @@ function App() {
     }
 
     if (
-      !file.type.startsWith(
-        "image/"
-      )
+      !file.type.startsWith("image/")
     ) {
       setErrorMessage(
         "Selecciona un archivo de imagen válido."
       );
 
       setStatus("error");
-
       event.target.value = "";
 
       return;
@@ -204,15 +209,12 @@ function App() {
       );
 
       setStatus("error");
-
       event.target.value = "";
 
       return;
     }
 
-    if (
-      previewUrlRef.current
-    ) {
+    if (previewUrlRef.current) {
       URL.revokeObjectURL(
         previewUrlRef.current
       );
@@ -226,27 +228,25 @@ function App() {
 
     setSelectedFile(file);
     setSelectedImage(imageUrl);
-
-    setSelectedFileName(
-      file.name
-    );
+    setSelectedFileName(file.name);
 
     setResult(null);
 
     setClienteNombre("");
     setClienteTelefono("");
+
     setModeloVehiculo("");
     setAnioVehiculo("");
     setVersionVehiculo("");
 
     setCantidadCotizacion(1);
 
+    // Limpiar las dos preguntas
+    setInteresaTomaCuenta("");
+    setInteresaPromociones("");
+
     setCotizacionError("");
-
-    setCotizacionCreada(
-      null
-    );
-
+    setCotizacionCreada(null);
     setErrorMessage("");
 
     setStatus("ready");
@@ -269,13 +269,8 @@ function App() {
     setStatus("analyzing");
 
     setResult(null);
-
     setCotizacionError("");
-
-    setCotizacionCreada(
-      null
-    );
-
+    setCotizacionCreada(null);
     setErrorMessage("");
 
     try {
@@ -292,8 +287,7 @@ function App() {
       }
 
       const inventoryPart =
-        data.inventario ||
-        null;
+        data.inventario || null;
 
       const analysis =
         data.analisis || {};
@@ -308,8 +302,7 @@ function App() {
       setResult({
         description:
           analysis.descripcion ||
-          inventoryPart
-            ?.descripcion ||
+          inventoryPart?.descripcion ||
           "Pieza no identificada",
 
         detail:
@@ -317,14 +310,12 @@ function App() {
           "No se recibió una descripción adicional.",
 
         partNumber:
-          inventoryPart
-            ?.numeroParte ||
+          inventoryPart?.numeroParte ||
           analysis.numeroParte ||
           "Sin número de parte",
 
         model:
-          inventoryPart
-            ?.modelo ||
+          inventoryPart?.modelo ||
           analysis.modelo ||
           "Sin determinar",
 
@@ -342,8 +333,7 @@ function App() {
           "Sin determinar",
 
         confidence:
-          analysis.confianza ??
-          0,
+          analysis.confianza ?? 0,
 
         visibleText:
           Array.isArray(
@@ -382,8 +372,7 @@ function App() {
           selectedFile.size,
 
         simulation:
-          data.simulacion ===
-          true,
+          data.simulacion === true,
 
         message:
           data.mensaje ||
@@ -412,9 +401,7 @@ function App() {
   // ==========================================
 
   async function handleCrearCotizacion() {
-    if (
-      !result?.inventory
-    ) {
+    if (!result?.inventory) {
       setCotizacionError(
         "Primero debe existir una refacción identificada en el inventario."
       );
@@ -442,7 +429,6 @@ function App() {
         1,
         Number(
           cantidadCotizacion
-          
         ) || 1
       );
 
@@ -460,15 +446,22 @@ function App() {
       return;
     }
 
-    setCreandoCotizacion(
-      true
-    );
+    // Las dos preguntas son obligatorias.
+    if (
+      !interesaTomaCuenta ||
+      !interesaPromociones
+    ) {
+      setCotizacionError(
+        "Responde Sí o No en las dos preguntas de interés del cliente."
+      );
+
+      return;
+    }
+
+    setCreandoCotizacion(true);
 
     setCotizacionError("");
-
-    setCotizacionCreada(
-      null
-    );
+    setCotizacionCreada(null);
 
     try {
       const response =
@@ -482,50 +475,52 @@ function App() {
                 "application/json",
             },
 
-            body:
-              JSON.stringify({
-                nombreCliente:
-                  nombre,
+            body: JSON.stringify({
+              nombreCliente:
+                nombre,
 
-                telefonoCliente:
-                  telefono,
+              telefonoCliente:
+                telefono,
 
-                modeloVehiculo:
-                  modelo,
+              modeloVehiculo:
+                modelo,
 
-                anioVehiculo:
-                  anio,
+              anioVehiculo:
+                anio,
 
-                versionVehiculo:
-                  version,
+              versionVehiculo:
+                version,
 
-                items: [
-                  {
-                    numeroParte:
-                      result
-                        .inventory
-                        .numeroParte,
+              // NUEVO
+              interesaTomaCuenta:
+                interesaTomaCuenta,
 
-                    descripcion:
-                      result
-                        .inventory
-                        .descripcion ||
-                      result
-                        .description ||
-                      "",
+              // NUEVO
+              interesaPromociones:
+                interesaPromociones,
 
-                    cantidad,
+              items: [
+                {
+                  numeroParte:
+                    result.inventory
+                      .numeroParte,
 
-                    precioUnitario:
-                      Number(
-                        result
-                          .inventory
-                          .precio ||
-                          0
-                      ),
-                  },
-                ],
-              }),
+                  descripcion:
+                    result.inventory
+                      .descripcion ||
+                    result.description ||
+                    "",
+
+                  cantidad,
+
+                  precioUnitario:
+                    Number(
+                      result.inventory
+                        .precio || 0
+                    ),
+                },
+              ],
+            }),
           }
         );
 
@@ -557,22 +552,17 @@ function App() {
           : "No se pudo crear la cotización."
       );
     } finally {
-      setCreandoCotizacion(
-        false
-      );
+      setCreandoCotizacion(false);
     }
   }
-
-  // ==========================================
+    // ==========================================
   // HISTORIAL
   // ==========================================
 
   async function cargarHistorial(
     buscar = historialBusqueda
   ) {
-    setHistorialLoading(
-      true
-    );
+    setHistorialLoading(true);
 
     setHistorialError("");
 
@@ -582,9 +572,7 @@ function App() {
           limite: "200",
         });
 
-      if (
-        buscar.trim()
-      ) {
+      if (buscar.trim()) {
         params.set(
           "buscar",
           buscar.trim()
@@ -628,9 +616,7 @@ function App() {
           : "No se pudo cargar el historial."
       );
     } finally {
-      setHistorialLoading(
-        false
-      );
+      setHistorialLoading(false);
     }
   }
 
@@ -661,24 +647,22 @@ function App() {
     }
 
     setSelectedFile(null);
-
     setSelectedImage(null);
-
     setSelectedFileName("");
 
     setResult(null);
 
     setClienteNombre("");
-
     setClienteTelefono("");
 
     setModeloVehiculo("");
-
     setAnioVehiculo("");
-
     setVersionVehiculo("");
 
     setCantidadCotizacion(1);
+
+    setInteresaTomaCuenta("");
+    setInteresaPromociones("");
 
     setCotizacionError("");
 
@@ -833,8 +817,7 @@ function App() {
       Array.isArray(
         cotizacionCreada.items
       )
-        ? cotizacionCreada
-            .items
+        ? cotizacionCreada.items
         : [];
 
     const fecha =
@@ -1169,23 +1152,45 @@ function App() {
 
           <div class="client-grid">
             <div>
-              <div class="label">Marca</div>
-              <strong>Suzuki</strong>
+              <div class="label">
+                Marca
+              </div>
+              <strong>
+                Suzuki
+              </strong>
             </div>
 
             <div>
-              <div class="label">Modelo</div>
-              <strong>${escapeHtml(modelo || "—")}</strong>
+              <div class="label">
+                Modelo
+              </div>
+              <strong>
+                ${escapeHtml(
+                  modelo || "—"
+                )}
+              </strong>
             </div>
 
             <div>
-              <div class="label">Año</div>
-              <strong>${escapeHtml(anio || "—")}</strong>
+              <div class="label">
+                Año
+              </div>
+              <strong>
+                ${escapeHtml(
+                  anio || "—"
+                )}
+              </strong>
             </div>
 
             <div>
-              <div class="label">Versión / Motor</div>
-              <strong>${escapeHtml(version || "—")}</strong>
+              <div class="label">
+                Versión / Motor
+              </div>
+              <strong>
+                ${escapeHtml(
+                  version || "—"
+                )}
+              </strong>
             </div>
           </div>
         </div>
@@ -1333,8 +1338,7 @@ function App() {
       </header>
     );
   }
-
-  // ==========================================
+    // ==========================================
   // IDENTIFICAR
   // ==========================================
 
@@ -1360,9 +1364,7 @@ function App() {
             {selectedImage ? (
               <>
                 <img
-                  src={
-                    selectedImage
-                  }
+                  src={selectedImage}
                   alt="Vista previa"
                   className="image-preview"
                 />
@@ -1512,18 +1514,13 @@ function App() {
                   </span>
 
                   <h3>
-                    {
-                      result.description
-                    }
+                    {result.description}
                   </h3>
                 </div>
 
                 <div className="confidence">
                   <strong>
-                    {
-                      result.confidence
-                    }
-                    %
+                    {result.confidence}%
                   </strong>
 
                   <span>
@@ -1548,9 +1545,7 @@ function App() {
 
                   <dd>
                     <strong>
-                      {
-                        result.partNumber
-                      }
+                      {result.partNumber}
                     </strong>
                   </dd>
                 </div>
@@ -1561,9 +1556,7 @@ function App() {
                   </dt>
 
                   <dd>
-                    {
-                      result.model
-                    }
+                    {result.model}
                   </dd>
                 </div>
 
@@ -1573,9 +1566,7 @@ function App() {
                   </dt>
 
                   <dd>
-                    {
-                      result.year
-                    }
+                    {result.year}
                   </dd>
                 </div>
 
@@ -1585,9 +1576,7 @@ function App() {
                   </dt>
 
                   <dd>
-                    {
-                      result.category
-                    }
+                    {result.category}
                   </dd>
                 </div>
 
@@ -1597,9 +1586,7 @@ function App() {
                   </dt>
 
                   <dd>
-                    {
-                      result.position
-                    }
+                    {result.position}
                   </dd>
                 </div>
 
@@ -1740,7 +1727,9 @@ function App() {
                 </div>
               )}
 
-              {/* CLIENTE */}
+              {/* ================================= */}
+              {/* DATOS DEL CLIENTE */}
+              {/* ================================= */}
 
               {result.inventoryFound &&
                 result.inventory && (
@@ -1781,9 +1770,7 @@ function App() {
                           event
                         ) =>
                           setClienteNombre(
-                            event
-                              .target
-                              .value
+                            event.target.value
                           )
                         }
                         placeholder="Nombre completo"
@@ -1791,13 +1778,11 @@ function App() {
                           creandoCotizacion
                         }
                         style={{
-                          width:
-                            "100%",
+                          width: "100%",
                           marginTop: 6,
                           padding:
                             "10px 12px",
-                          borderRadius:
-                            8,
+                          borderRadius: 8,
                           border:
                             "1px solid #cbd5e1",
                         }}
@@ -1816,9 +1801,7 @@ function App() {
                           event
                         ) =>
                           setClienteTelefono(
-                            event
-                              .target
-                              .value
+                            event.target.value
                           )
                         }
                         placeholder="Ejemplo: 7221234567"
@@ -1826,13 +1809,11 @@ function App() {
                           creandoCotizacion
                         }
                         style={{
-                          width:
-                            "100%",
+                          width: "100%",
                           marginTop: 6,
                           padding:
                             "10px 12px",
-                          borderRadius:
-                            8,
+                          borderRadius: 8,
                           border:
                             "1px solid #cbd5e1",
                         }}
@@ -1861,7 +1842,8 @@ function App() {
                         style={{
                           width: "100%",
                           marginTop: 6,
-                          padding: "10px 12px",
+                          padding:
+                            "10px 12px",
                           borderRadius: 8,
                           border:
                             "1px solid #cbd5e1",
@@ -1891,7 +1873,8 @@ function App() {
                         style={{
                           width: "100%",
                           marginTop: 6,
-                          padding: "10px 12px",
+                          padding:
+                            "10px 12px",
                           borderRadius: 8,
                           border:
                             "1px solid #cbd5e1",
@@ -1921,7 +1904,8 @@ function App() {
                         style={{
                           width: "100%",
                           marginTop: 6,
-                          padding: "10px 12px",
+                          padding:
+                            "10px 12px",
                           borderRadius: 8,
                           border:
                             "1px solid #cbd5e1",
@@ -1943,22 +1927,18 @@ function App() {
                           event
                         ) =>
                           setCantidadCotizacion(
-                            event
-                              .target
-                              .value
+                            event.target.value
                           )
                         }
                         disabled={
                           creandoCotizacion
                         }
                         style={{
-                          width:
-                            "100%",
+                          width: "100%",
                           marginTop: 6,
                           padding:
                             "10px 12px",
-                          borderRadius:
-                            8,
+                          borderRadius: 8,
                           border:
                             "1px solid #cbd5e1",
                         }}
@@ -1966,6 +1946,270 @@ function App() {
                     </label>
 
                   </div>
+
+                  {/* ================================= */}
+                  {/* PREGUNTAS COMERCIALES */}
+                  {/* ================================= */}
+
+                  <div
+                    style={{
+                      marginTop: 20,
+                      padding: 18,
+                      background:
+                        "#f8fafc",
+                      border:
+                        "1px solid #dbe3ec",
+                      borderRadius: 12,
+                    }}
+                  >
+
+                    <h4
+                      style={{
+                        marginTop: 0,
+                        marginBottom: 6,
+                        color: "#123f73",
+                      }}
+                    >
+                      Oportunidades comerciales
+                    </h4>
+
+                    <p
+                      style={{
+                        marginTop: 0,
+                        color: "#64748b",
+                      }}
+                    >
+                      El asesor únicamente debe
+                      marcar Sí o No.
+                    </p>
+
+                    {/* PREGUNTA 1 */}
+
+                    <div
+                      style={{
+                        padding:
+                          "14px 0",
+                        borderBottom:
+                          "1px solid #e2e8f0",
+                      }}
+                    >
+
+                      <strong>
+                        ¿Le gustaría conocer cuánto
+                        podemos ofrecerle por su auto
+                        como toma a cuenta?
+                      </strong>
+
+                      <div
+                        style={{
+                          marginTop: 10,
+                          display: "flex",
+                          gap: 10,
+                          alignItems:
+                            "center",
+                        }}
+                      >
+
+                        <label
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap: 6,
+                            cursor:
+                              "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="interesaTomaCuenta"
+                            value="Si"
+                            checked={
+                              interesaTomaCuenta ===
+                              "Si"
+                            }
+                            onChange={() =>
+                              setInteresaTomaCuenta(
+                                "Si"
+                              )
+                            }
+                            disabled={
+                              creandoCotizacion
+                            }
+                          />
+
+                          Sí
+                        </label>
+
+                        <label
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap: 6,
+                            cursor:
+                              "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="interesaTomaCuenta"
+                            value="No"
+                            checked={
+                              interesaTomaCuenta ===
+                              "No"
+                            }
+                            onChange={() =>
+                              setInteresaTomaCuenta(
+                                "No"
+                              )
+                            }
+                            disabled={
+                              creandoCotizacion
+                            }
+                          />
+
+                          No
+                        </label>
+
+                      </div>
+
+                      {interesaTomaCuenta ===
+                        "Si" && (
+                        <p
+                          style={{
+                            marginBottom: 0,
+                            marginTop: 10,
+                            color:
+                              "#166534",
+                            fontSize: 13,
+                          }}
+                        >
+                          ✓ Se generará
+                          automáticamente un
+                          reporte para Seminuevos.
+                        </p>
+                      )}
+
+                    </div>
+
+                    {/* PREGUNTA 2 */}
+
+                    <div
+                      style={{
+                        paddingTop: 14,
+                      }}
+                    >
+
+                      <strong>
+                        ¿Le gustaría recibir
+                        información sobre
+                        promociones comerciales
+                        de autos nuevos?
+                      </strong>
+
+                      <div
+                        style={{
+                          marginTop: 10,
+                          display: "flex",
+                          gap: 10,
+                          alignItems:
+                            "center",
+                        }}
+                      >
+
+                        <label
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap: 6,
+                            cursor:
+                              "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="interesaPromociones"
+                            value="Si"
+                            checked={
+                              interesaPromociones ===
+                              "Si"
+                            }
+                            onChange={() =>
+                              setInteresaPromociones(
+                                "Si"
+                              )
+                            }
+                            disabled={
+                              creandoCotizacion
+                            }
+                          />
+
+                          Sí
+                        </label>
+
+                        <label
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap: 6,
+                            cursor:
+                              "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="interesaPromociones"
+                            value="No"
+                            checked={
+                              interesaPromociones ===
+                              "No"
+                            }
+                            onChange={() =>
+                              setInteresaPromociones(
+                                "No"
+                              )
+                            }
+                            disabled={
+                              creandoCotizacion
+                            }
+                          />
+
+                          No
+                        </label>
+
+                      </div>
+
+                      {interesaPromociones ===
+                        "Si" && (
+                        <p
+                          style={{
+                            marginBottom: 0,
+                            marginTop: 10,
+                            color:
+                              "#166534",
+                            fontSize: 13,
+                          }}
+                        >
+                          ✓ Se generará
+                          automáticamente un
+                          reporte para Ventas.
+                        </p>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                  {/* ================================= */}
+                  {/* BOTÓN CREAR COTIZACIÓN */}
+                  {/* ================================= */}
 
                   <div
                     style={{
@@ -2005,7 +2249,7 @@ function App() {
                             result
                               .inventory
                               .precio ||
-                              0
+                            0
                           ) *
                             Math.max(
                               1,
@@ -2027,9 +2271,7 @@ function App() {
                         marginTop: 14,
                       }}
                     >
-                      {
-                        cotizacionError
-                      }
+                      {cotizacionError}
                     </p>
                   )}
 
@@ -2129,229 +2371,295 @@ function App() {
       </section>
     );
   }
-
+    // ==========================================
+  // COTIZACIÓN CREADA
   // ==========================================
-  // COTIZACIÓN FORMAL
-  // ==========================================
 
-  function renderCotizacion() {
-    if (
-      !cotizacionCreada
-    ) {
+  function renderCotizacionCreada() {
+    if (!cotizacionCreada) {
       return null;
     }
 
+    const cotizacion =
+      cotizacionCreada.cotizacion ||
+      cotizacionCreada;
+
     const cliente =
-      cotizacionCreada
-        .cliente || {};
+      cotizacion.cliente || {
+        nombre:
+          cotizacion.nombreCliente ||
+          clienteNombre ||
+          "",
+        telefono:
+          cotizacion.telefonoCliente ||
+          clienteTelefono ||
+          "",
+      };
+
+    const items =
+      Array.isArray(cotizacion.items)
+        ? cotizacion.items
+        : [];
 
     const modelo =
-      cotizacionCreada
-        .modeloVehiculo ||
+      cotizacion.modeloVehiculo ||
       modeloVehiculo ||
       "";
 
     const anio =
-      cotizacionCreada
-        .anioVehiculo ||
+      cotizacion.anioVehiculo ||
       anioVehiculo ||
       "";
 
     const version =
-      cotizacionCreada
-        .versionVehiculo ||
+      cotizacion.versionVehiculo ||
       versionVehiculo ||
       "";
 
-    const items =
-      Array.isArray(
-        cotizacionCreada.items
-      )
-        ? cotizacionCreada
-            .items
-        : [];
+    function imprimirCotizacion() {
+      window.print();
+    }
 
     return (
       <div
+        className="modal-overlay"
         style={{
           position: "fixed",
           inset: 0,
-          zIndex: 9999,
           background:
-            "rgba(15, 23, 42, 0.70)",
+            "rgba(15, 23, 42, 0.65)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 20,
+          zIndex: 9999,
           overflowY: "auto",
-          padding: 25,
         }}
       >
-
         <div
+          className="modal-card"
           style={{
-            maxWidth: 950,
-            margin: "0 auto",
-            background: "#fff",
+            width: "100%",
+            maxWidth: 900,
+            maxHeight: "92vh",
+            overflowY: "auto",
+            background: "#ffffff",
             borderRadius: 18,
-            overflow: "hidden",
+            padding: 28,
+            boxShadow:
+              "0 20px 60px rgba(0,0,0,0.25)",
           }}
         >
+          {/* ================================= */}
+          {/* ENCABEZADO */}
+          {/* ================================= */}
 
           <div
             style={{
-              padding: 30,
-              borderBottom:
-                "5px solid #123f73",
               display: "flex",
               justifyContent:
                 "space-between",
-              gap: 25,
+              alignItems:
+                "flex-start",
+              gap: 20,
               flexWrap: "wrap",
+              borderBottom:
+                "2px solid #164a7f",
+              paddingBottom: 18,
+              marginBottom: 20,
             }}
           >
-
             <div>
-              <div
+              <h2
                 style={{
+                  margin: 0,
                   color: "#123f73",
-                  fontSize: 34,
-                  fontWeight: 900,
                 }}
               >
-                SUZUKI
-              </div>
+                Cotización
+              </h2>
 
-              <strong>
+              <p
+                style={{
+                  margin:
+                    "6px 0 0",
+                  color: "#64748b",
+                }}
+              >
                 Suzuki Parts Vision AI
-              </strong>
-
-              <p>
-                Departamento de Refacciones
               </p>
             </div>
 
             <div
               style={{
-                border:
-                  "1px solid #dbe3ec",
-                borderRadius: 12,
-                padding: 16,
+                textAlign: "right",
               }}
             >
-              <div>
-                <strong>
-                  Folio:
-                </strong>{" "}
-                {
-                  cotizacionCreada.folio
-                }
-              </div>
+              <strong>
+                Folio
+              </strong>
 
               <div
                 style={{
-                  marginTop: 8,
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: "#123f73",
+                  marginTop: 4,
                 }}
               >
-                <strong>
-                  Vigencia:
-                </strong>{" "}
-                15 días
+                {cotizacion.folio ||
+                  cotizacion.id ||
+                  "—"}
               </div>
             </div>
-
           </div>
+
+          {/* ================================= */}
+          {/* DATOS CLIENTE */}
+          {/* ================================= */}
 
           <div
             style={{
-              padding: 30,
+              marginBottom: 22,
             }}
           >
-
-            <h1>
-              COTIZACIÓN
-            </h1>
-
-            <div
-              style={{
-                background:
-                  "#f8fafc",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: 12,
-                padding: 18,
-              }}
-            >
-
-              <h3>
-                Datos del cliente
-              </h3>
-
-              <p>
-                <strong>
-                  Nombre:
-                </strong>{" "}
-                {cliente.nombre ||
-                  clienteNombre}
-              </p>
-
-              <p>
-                <strong>
-                  Teléfono:
-                </strong>{" "}
-                {cliente.telefono ||
-                  clienteTelefono}
-              </p>
-
-              <p>
-                <strong>
-                  Estado:
-                </strong>{" "}
-                {
-                  cotizacionCreada.estado
-                }
-              </p>
-
-            </div>
-
-            <div
-              style={{
-                background:
-                  "#f8fafc",
-                border:
-                  "1px solid #e2e8f0",
-                borderRadius: 12,
-                padding: 18,
-                marginTop: 18,
-              }}
-            >
-              <h3>
-                Datos del vehículo
-              </h3>
-
-              <p>
-                <strong>Marca:</strong>{" "}
-                Suzuki
-              </p>
-
-              <p>
-                <strong>Modelo:</strong>{" "}
-                {modelo || "—"}
-              </p>
-
-              <p>
-                <strong>Año:</strong>{" "}
-                {anio || "—"}
-              </p>
-
-              <p>
-                <strong>
-                  Versión / Motor:
-                </strong>{" "}
-                {version || "—"}
-              </p>
-            </div>
-
             <h3
               style={{
                 color: "#123f73",
-                marginTop: 28,
+                marginBottom: 14,
+              }}
+            >
+              Datos del cliente
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Nombre
+                </div>
+
+                <strong>
+                  {cliente.nombre ||
+                    "—"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Teléfono
+                </div>
+
+                <strong>
+                  {cliente.telefono ||
+                    "—"}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* ================================= */}
+          {/* VEHÍCULO */}
+          {/* ================================= */}
+
+          <div
+            style={{
+              marginBottom: 22,
+            }}
+          >
+            <h3
+              style={{
+                color: "#123f73",
+                marginBottom: 14,
+              }}
+            >
+              Vehículo actual
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Modelo
+                </div>
+
+                <strong>
+                  {modelo || "—"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Año
+                </div>
+
+                <strong>
+                  {anio || "—"}
+                </strong>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "#64748b",
+                    fontSize: 13,
+                  }}
+                >
+                  Versión / Motor
+                </div>
+
+                <strong>
+                  {version || "—"}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* ================================= */}
+          {/* REFACCIONES */}
+          {/* ================================= */}
+
+          <div
+            style={{
+              marginBottom: 22,
+            }}
+          >
+            <h3
+              style={{
+                color: "#123f73",
+                marginBottom: 14,
               }}
             >
               Refacciones
@@ -2362,7 +2670,6 @@ function App() {
                 overflowX: "auto",
               }}
             >
-
               <table
                 style={{
                   width: "100%",
@@ -2370,26 +2677,29 @@ function App() {
                     "collapse",
                 }}
               >
-
                 <thead>
                   <tr
                     style={{
                       background:
-                        "#123f73",
+                        "#164a7f",
                       color: "white",
                     }}
                   >
                     <th
                       style={{
                         padding: 12,
+                        textAlign:
+                          "left",
                       }}
                     >
-                      Cant.
+                      Número de parte
                     </th>
 
                     <th
                       style={{
                         padding: 12,
+                        textAlign:
+                          "left",
                       }}
                     >
                       Descripción
@@ -2398,14 +2708,18 @@ function App() {
                     <th
                       style={{
                         padding: 12,
+                        textAlign:
+                          "center",
                       }}
                     >
-                      No. parte
+                      Cant.
                     </th>
 
                     <th
                       style={{
                         padding: 12,
+                        textAlign:
+                          "right",
                       }}
                     >
                       Precio
@@ -2414,460 +2728,219 @@ function App() {
                     <th
                       style={{
                         padding: 12,
+                        textAlign:
+                          "right",
                       }}
                     >
-                      Total
+                      Subtotal
                     </th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {items.map(
-                    (
-                      item,
-                      index
-                    ) => (
-                      <tr
-                        key={`${item.numeroParte}-${index}`}
-                      >
-                        <td
-                          style={{
-                            padding: 12,
-                          }}
-                        >
-                          {
-                            item.cantidad
+                  {items.length > 0 ? (
+                    items.map(
+                      (
+                        item,
+                        index
+                      ) => (
+                        <tr
+                          key={
+                            item.id ||
+                            `${item.numeroParte}-${index}`
                           }
-                        </td>
-
-                        <td
                           style={{
-                            padding: 12,
+                            borderBottom:
+                              "1px solid #e2e8f0",
                           }}
                         >
-                          {
-                            item.descripcion
-                          }
-                        </td>
+                          <td
+                            style={{
+                              padding:
+                                12,
+                            }}
+                          >
+                            {item.numeroParte ||
+                              "—"}
+                          </td>
 
-                        <td
-                          style={{
-                            padding: 12,
-                          }}
-                        >
-                          {
-                            item.numeroParte
-                          }
-                        </td>
+                          <td
+                            style={{
+                              padding:
+                                12,
+                            }}
+                          >
+                            {item.descripcion ||
+                              "—"}
+                          </td>
 
-                        <td
-                          style={{
-                            padding: 12,
-                          }}
-                        >
-                          {formatPrice(
-                            item.precioUnitario
-                          )}
-                        </td>
+                          <td
+                            style={{
+                              padding:
+                                12,
+                              textAlign:
+                                "center",
+                            }}
+                          >
+                            {item.cantidad ||
+                              1}
+                          </td>
 
-                        <td
-                          style={{
-                            padding: 12,
-                            fontWeight:
-                              700,
-                          }}
-                        >
-                          {formatPrice(
-                            item.subtotal
-                          )}
-                        </td>
-                      </tr>
+                          <td
+                            style={{
+                              padding:
+                                12,
+                              textAlign:
+                                "right",
+                            }}
+                          >
+                            {formatPrice(
+                              item.precioUnitario ??
+                                item.precio ??
+                                0
+                            )}
+                          </td>
+
+                          <td
+                            style={{
+                              padding:
+                                12,
+                              textAlign:
+                                "right",
+                              fontWeight:
+                                700,
+                            }}
+                          >
+                            {formatPrice(
+                              item.subtotal ??
+                                Number(
+                                  item.cantidad ||
+                                    1
+                                ) *
+                                  Number(
+                                    item.precioUnitario ??
+                                      item.precio ??
+                                      0
+                                  )
+                            )}
+                          </td>
+                        </tr>
+                      )
                     )
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        style={{
+                          padding: 20,
+                          textAlign:
+                            "center",
+                          color:
+                            "#64748b",
+                        }}
+                      >
+                        Cotización creada
+                        correctamente.
+                      </td>
+                    </tr>
                   )}
                 </tbody>
-
               </table>
-
             </div>
-
-            <div
-              style={{
-                marginTop: 25,
-                marginLeft: "auto",
-                maxWidth: 320,
-                border:
-                  "1px solid #dbe3ec",
-                borderRadius: 12,
-                padding: 18,
-              }}
-            >
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent:
-                    "space-between",
-                }}
-              >
-                <span>
-                  Subtotal
-                </span>
-
-                <strong>
-                  {formatPrice(
-                    cotizacionCreada
-                      .subtotal
-                  )}
-                </strong>
-              </div>
-
-              <hr />
-
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent:
-                    "space-between",
-                  color: "#123f73",
-                  fontSize: 20,
-                }}
-              >
-                <strong>
-                  TOTAL
-                </strong>
-
-                <strong>
-                  {formatPrice(
-                    cotizacionCreada
-                      .total
-                  )}
-                </strong>
-              </div>
-
-            </div>
-
-            <div
-              style={{
-                marginTop: 30,
-              }}
-            >
-
-              <h3>
-                Condiciones
-              </h3>
-
-              <ul>
-                <li>
-                  Vigencia de 15 días naturales.
-                </li>
-
-                <li>
-                  Precios sujetos a cambio.
-                </li>
-
-                <li>
-                  Disponibilidad sujeta a inventario.
-                </li>
-
-                <li>
-                  La cotización no representa una reserva.
-                </li>
-              </ul>
-
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "flex-end",
-                gap: 12,
-                marginTop: 30,
-              }}
-            >
-
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() =>
-                  setCotizacionCreada(
-                    null
-                  )
-                }
-              >
-                Cerrar
-              </button>
-
-              <button
-                type="button"
-                className="primary-button"
-                onClick={
-                  imprimirCotizacion
-                }
-              >
-                Imprimir / Guardar PDF
-              </button>
-
-            </div>
-
           </div>
 
-        </div>
+          {/* ================================= */}
+          {/* TOTAL */}
+          {/* ================================= */}
 
-      </div>
-    );
-  }
-
-  // ==========================================
-  // HISTORIAL
-  // ==========================================
-
-  function renderHistorial() {
-    return (
-      <>
-        {renderHeader(
-          "Historial",
-          "Consulta todas las piezas solicitadas y cotizaciones registradas."
-        )}
-
-        <section className="panel">
-
-          <div className="panel-header">
-
-            <h2>
-              Historial permanente
-            </h2>
-
-            <p>
-              Los registros de este
-              historial no se eliminan
-              desde la aplicación.
-            </p>
-
-          </div>
-
-          <form
-            onSubmit={
-              handleHistorialBuscar
-            }
+          <div
             style={{
               display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              marginBottom: 20,
+              justifyContent:
+                "flex-end",
+              marginBottom: 24,
             }}
           >
-
-            <input
-              type="search"
-              value={
-                historialBusqueda
-              }
-              onChange={(event) =>
-                setHistorialBusqueda(
-                  event.target.value
-                )
-              }
-              placeholder="Buscar cliente, teléfono, parte, folio o estado..."
-              className="inventory-search"
+            <div
               style={{
-                flex: 1,
+                minWidth: 260,
+                background:
+                  "#f8fafc",
+                padding: 18,
+                borderRadius: 12,
+                border:
+                  "1px solid #e2e8f0",
               }}
-            />
-
-            <button
-              type="submit"
-              className="primary-button"
             >
-              Buscar
-            </button>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  gap: 20,
+                  fontSize: 18,
+                }}
+              >
+                <strong>
+                  Total
+                </strong>
 
+                <strong
+                  style={{
+                    color: "#123f73",
+                  }}
+                >
+                  {formatPrice(
+                    cotizacion.total ||
+                      0
+                  )}
+                </strong>
+              </div>
+            </div>
+          </div>
+
+          {/* ================================= */}
+          {/* BOTONES */}
+          {/* ================================= */}
+
+          <div
+            style={{
+              marginTop: 24,
+              display: "flex",
+              justifyContent:
+                "flex-end",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <button
               type="button"
               className="secondary-button"
               onClick={() => {
-                setHistorialBusqueda(
-                  ""
-                );
-
-                cargarHistorial(
-                  ""
+                setCotizacionCreada(
+                  null
                 );
               }}
             >
-              Mostrar todo
+              Cerrar
             </button>
 
-          </form>
-
-          {historialError && (
-            <p className="error-message">
-              {historialError}
-            </p>
-          )}
-
-          {historialLoading ? (
-            <div className="inventory-empty">
-
-              <span className="spinner" />
-
-              <p>
-                Cargando historial...
-              </p>
-
-            </div>
-          ) : historial.length ===
-            0 ? (
-            <div className="inventory-empty">
-
-              <strong>
-                No hay registros
-              </strong>
-
-              <p>
-                Las cotizaciones creadas
-                aparecerán aquí.
-              </p>
-
-            </div>
-          ) : (
-            <div className="inventory-table-wrapper">
-
-              <table className="inventory-table">
-
-                <thead>
-                  <tr>
-                    <th>
-                      Fecha
-                    </th>
-
-                    <th>
-                      Folio
-                    </th>
-
-                    <th>
-                      Cliente
-                    </th>
-
-                    <th>
-                      Teléfono
-                    </th>
-
-                    <th>
-                      No. parte
-                    </th>
-
-                    <th>
-                      Descripción
-                    </th>
-
-                    <th>
-                      Cant.
-                    </th>
-
-                    <th>
-                      Precio
-                    </th>
-
-                    <th>
-                      Total
-                    </th>
-
-                    <th>
-                      Estado
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {historial.map(
-                    (item) => (
-                      <tr
-                        key={
-                          item.id
-                        }
-                      >
-
-                        <td>
-                          {formatDate(
-                            item.fecha
-                          )}
-                        </td>
-
-                        <td>
-                          <strong>
-                            {
-                              item.folioCotizacion
-                            }
-                          </strong>
-                        </td>
-
-                        <td>
-                          {
-                            item.nombreCliente
-                          }
-                        </td>
-
-                        <td>
-                          {
-                            item.telefonoCliente
-                          }
-                        </td>
-
-                        <td>
-                          <strong>
-                            {
-                              item.numeroParte
-                            }
-                          </strong>
-                        </td>
-
-                        <td>
-                          {
-                            item.descripcion
-                          }
-                        </td>
-
-                        <td>
-                          {
-                            item.cantidad
-                          }
-                        </td>
-
-                        <td>
-                          {formatPrice(
-                            item.precioUnitario
-                          )}
-                        </td>
-
-                        <td>
-                          {formatPrice(
-                            item.subtotal
-                          )}
-                        </td>
-
-                        <td>
-                          {
-                            item.estado
-                          }
-                        </td>
-
-                      </tr>
-                    )
-                  )}
-                </tbody>
-
-              </table>
-
-            </div>
-          )}
-
-        </section>
-      </>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={
+                imprimirCotizacion
+              }
+            >
+              Imprimir / Guardar PDF
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
-  // ==========================================
+   // ==========================================
   // PÁGINA TEMPORAL
   // ==========================================
 
@@ -2883,9 +2956,7 @@ function App() {
         )}
 
         <section className="panel">
-
           <div className="empty-result">
-
             <span>
               {title}
             </span>
@@ -2894,9 +2965,7 @@ function App() {
               Esta pantalla será
               construida próximamente.
             </p>
-
           </div>
-
         </section>
       </>
     );
@@ -2934,11 +3003,11 @@ function App() {
       case "inventory":
         return <Inventario />;
 
-     case "history":
-  return <Historial />;
+      case "history":
+        return <Historial />;
 
       case "reports":
-  return <Reportes />;
+        return <Reportes />;
 
       case "settings":
         return renderTemporaryPage(
@@ -2965,7 +3034,6 @@ function App() {
 
   return (
     <div className="app">
-
       <Sidebar
         activePage={
           activePage
@@ -2979,8 +3047,7 @@ function App() {
         {renderCurrentPage()}
       </main>
 
-      {renderCotizacion()}
-
+      {renderCotizacionCreada()}
     </div>
   );
 }
