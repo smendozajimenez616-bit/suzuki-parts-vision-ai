@@ -572,6 +572,42 @@ function Historial() {
 
             <div>
               <div class="label">
+                Modelo Suzuki
+              </div>
+
+              <strong>
+                ${escapeHtml(
+                  cotizacionSeleccionada.modeloVehiculo || "—"
+                )}
+              </strong>
+            </div>
+
+            <div>
+              <div class="label">
+                Año
+              </div>
+
+              <strong>
+                ${escapeHtml(
+                  cotizacionSeleccionada.anioVehiculo || "—"
+                )}
+              </strong>
+            </div>
+
+            <div>
+              <div class="label">
+                Versión / Motor
+              </div>
+
+              <strong>
+                ${escapeHtml(
+                  cotizacionSeleccionada.versionVehiculo || "—"
+                )}
+              </strong>
+            </div>
+
+            <div>
+              <div class="label">
                 Estado
               </div>
 
@@ -729,6 +765,9 @@ function Historial() {
         item.estado,
         item.motivoRechazo,
         item.detalleMotivoRechazo,
+        item.modeloVehiculo,
+        item.anioVehiculo,
+        item.versionVehiculo,
       ]
         .join(" ")
         .toLowerCase();
@@ -796,7 +835,7 @@ function Historial() {
                 event.target.value
               )
             }
-            placeholder="Buscar cliente, teléfono, folio o estado..."
+            placeholder="Buscar cliente, teléfono, folio, vehículo o estado..."
             style={{
               flex: 1,
               minWidth: 240,
@@ -863,7 +902,7 @@ function Historial() {
                 width: "100%",
                 borderCollapse:
                   "collapse",
-                minWidth: 900,
+                minWidth: 1100,
               }}
             >
               <thead>
@@ -888,6 +927,10 @@ function Historial() {
 
                   <th style={thStyle}>
                     Teléfono
+                  </th>
+
+                  <th style={thStyle}>
+                    Vehículo
                   </th>
 
                   <th style={thStyle}>
@@ -936,6 +979,25 @@ function Historial() {
                         {
                           item.telefonoCliente
                         }
+                      </td>
+
+                      <td style={tdStyle}>
+                        <strong>
+                          {item.modeloVehiculo || "—"}
+                        </strong>
+                        {(item.anioVehiculo || item.versionVehiculo) && (
+                          <div
+                            style={{
+                              marginTop: 4,
+                              color: "#64748b",
+                              fontSize: 13,
+                            }}
+                          >
+                            {[item.anioVehiculo, item.versionVehiculo]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+                        )}
                       </td>
 
                       <td style={tdStyle}>
@@ -1258,6 +1320,21 @@ function Historial() {
                 value={
                   cotizacionSeleccionada.telefonoCliente
                 }
+              />
+
+              <InfoBox
+                label="Modelo Suzuki"
+                value={cotizacionSeleccionada.modeloVehiculo}
+              />
+
+              <InfoBox
+                label="Año"
+                value={cotizacionSeleccionada.anioVehiculo}
+              />
+
+              <InfoBox
+                label="Versión / Motor"
+                value={cotizacionSeleccionada.versionVehiculo}
               />
 
               <InfoBox

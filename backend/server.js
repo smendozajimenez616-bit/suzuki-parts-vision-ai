@@ -888,7 +888,23 @@ app.post(
           req.body
             ?.telefonoCliente
         );
+const modeloVehiculo =
+  String(
+    req.body?.modeloVehiculo ||
+      ""
+  ).trim();
 
+const anioVehiculo =
+  String(
+    req.body?.anioVehiculo ||
+      ""
+  ).trim();
+
+const versionVehiculo =
+  String(
+    req.body?.versionVehiculo ||
+      ""
+  ).trim();
       const items =
         Array.isArray(
           req.body?.items
@@ -1034,16 +1050,19 @@ app.post(
       const resultadoCotizacion =
         await dbRun(
           `
-          INSERT INTO cotizaciones
-          (
-            folio,
-            clienteId,
-            estado,
-            subtotal,
-            total,
-            observaciones
-          )
-          VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO cotizaciones
+            (
+              folio,
+              clienteId,
+              estado,
+              subtotal,
+              total,
+              observaciones,
+              modeloVehiculo,
+              anioVehiculo,
+              versionVehiculo
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             folio,
@@ -1052,12 +1071,14 @@ app.post(
             subtotal,
             total,
             observaciones,
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
           ]
         );
 
       const cotizacionId =
-        resultadoCotizacion
-          .lastID;
+        resultadoCotizacion.lastID;
 
       for (
         const item of
@@ -1139,25 +1160,29 @@ app.post(
           mensaje:
             "Cotización creada correctamente.",
 
-          cotizacion: {
-            id:
-              cotizacionId,
+         cotizacion: {
+  id:
+    cotizacionId,
 
-            folio,
+  folio,
 
-            cliente,
+  cliente,
 
-            estado:
-              "Pendiente",
+  estado:
+    "Pendiente",
 
-            subtotal,
+  subtotal,
 
-            total,
+  total,
 
-            observaciones,
+  observaciones,
 
-            items:
-              itemsNormalizados,
+  modeloVehiculo,
+  anioVehiculo,
+  versionVehiculo,
+
+  items:
+    itemsNormalizados,
           },
         });
     } catch (error) {
@@ -1213,9 +1238,12 @@ app.get(
   c.estado,
   c.subtotal,
   c.total,
-  c.observaciones,
-  c.motivoRechazo,
-  c.detalleMotivoRechazo,
+ c.observaciones,
+c.motivoRechazo,
+c.detalleMotivoRechazo,
+c.modeloVehiculo,
+c.anioVehiculo,
+c.versionVehiculo,
 
             cl.id
               AS clienteId,
@@ -1298,9 +1326,12 @@ app.get(
   c.estado,
   c.subtotal,
   c.total,
-  c.observaciones,
-  c.motivoRechazo,
-  c.detalleMotivoRechazo,
+ c.observaciones,
+c.motivoRechazo,
+c.detalleMotivoRechazo,
+c.modeloVehiculo,
+c.anioVehiculo,
+c.versionVehiculo,
 
             cl.id
               AS clienteId,
@@ -1591,20 +1622,17 @@ app.get(
     try {
       const buscar =
         String(
-          req.query.buscar ||
-            ""
+          req.query.buscar || ""
         ).trim();
 
       const paginaSolicitada =
         Number(
-          req.query.pagina ||
-            1
+          req.query.pagina || 1
         );
 
       const limiteSolicitado =
         Number(
-          req.query.limite ||
-            50
+          req.query.limite || 50
         );
 
       const pagina =
@@ -1627,8 +1655,7 @@ app.get(
           : 50;
 
       const offset =
-        (pagina - 1) *
-        limite;
+        (pagina - 1) * limite;
 
       let whereSql = "";
 
@@ -1637,12 +1664,15 @@ app.get(
       if (buscar) {
         whereSql = `
           WHERE
-            nombreCliente LIKE ?
-            OR telefonoCliente LIKE ?
-            OR numeroParte LIKE ?
-            OR descripcion LIKE ?
-            OR folioCotizacion LIKE ?
-            OR estado LIKE ?
+            h.nombreCliente LIKE ?
+            OR h.telefonoCliente LIKE ?
+            OR h.numeroParte LIKE ?
+            OR h.descripcion LIKE ?
+            OR h.folioCotizacion LIKE ?
+            OR h.estado LIKE ?
+            OR c.modeloVehiculo LIKE ?
+            OR c.anioVehiculo LIKE ?
+            OR c.versionVehiculo LIKE ?
         `;
 
         const patron =
@@ -1654,57 +1684,88 @@ app.get(
           patron,
           patron,
           patron,
+          patron,
+          patron,
+          patron,
           patron
         );
       }
 
+      // ======================================
+      // CONTAR REGISTROS
+      // ======================================
+
       const totalRow =
         await dbGet(
           `
-          SELECT
-            COUNT(*) AS total
+            SELECT
+              COUNT(*) AS total
 
-          FROM historial_pedidos
+            FROM historial_pedidos h
 
-          ${whereSql}
+            LEFT JOIN cotizaciones c
+              ON c.id = h.cotizacionId
+
+            ${whereSql}
           `,
           params
         );
 
       const total =
         Number(
-          totalRow?.total ||
-            0
+          totalRow?.total || 0
         );
+
+      // ======================================
+      // OBTENER HISTORIAL
+      // ======================================
 
       const datos =
         await dbAll(
           `
-          SELECT
-            id,
-            fecha,
-            clienteId,
-            nombreCliente,
-            telefonoCliente,
-            cotizacionId,
-            folioCotizacion,
-            numeroParte,
-            descripcion,
-            cantidad,
-            precioUnitario,
-            subtotal,
-            estado
+            SELECT
+              h.id,
+              h.fecha,
+              h.clienteId,
+              h.nombreCliente,
+              h.telefonoCliente,
+              h.cotizacionId,
+              h.folioCotizacion,
+              h.numeroParte,
+              h.descripcion,
+              h.cantidad,
+              h.precioUnitario,
+              h.subtotal,
+              h.estado,
 
-          FROM historial_pedidos
+              COALESCE(
+                c.modeloVehiculo,
+                ''
+              ) AS modeloVehiculo,
 
-          ${whereSql}
+              COALESCE(
+                c.anioVehiculo,
+                ''
+              ) AS anioVehiculo,
 
-          ORDER BY
-            fecha DESC,
-            id DESC
+              COALESCE(
+                c.versionVehiculo,
+                ''
+              ) AS versionVehiculo
 
-          LIMIT ?
-          OFFSET ?
+            FROM historial_pedidos h
+
+            LEFT JOIN cotizaciones c
+              ON c.id = h.cotizacionId
+
+            ${whereSql}
+
+            ORDER BY
+              h.fecha DESC,
+              h.id DESC
+
+            LIMIT ?
+            OFFSET ?
           `,
           [
             ...params,
@@ -1717,8 +1778,7 @@ app.get(
         Math.max(
           1,
           Math.ceil(
-            total /
-              limite
+            total / limite
           )
         );
 

@@ -14,6 +14,24 @@ function Cotizacion({
       ? cotizacion.items
       : [];
 
+  // Datos del vehículo.
+  // Primero intenta obtenerlos directamente de la cotización.
+  // También contempla que en algún momento vengan dentro de cliente.
+  const modeloVehiculo =
+    cotizacion.modeloVehiculo ||
+    cliente.modeloVehiculo ||
+    "";
+
+  const anioVehiculo =
+    cotizacion.anioVehiculo ||
+    cliente.anioVehiculo ||
+    "";
+
+  const versionVehiculo =
+    cotizacion.versionVehiculo ||
+    cliente.versionVehiculo ||
+    "";
+
   function formatPrice(value) {
     return new Intl.NumberFormat(
       "es-MX",
@@ -25,6 +43,11 @@ function Cotizacion({
   }
 
   function formatDate() {
+    const fecha =
+      cotizacion.fecha
+        ? new Date(cotizacion.fecha)
+        : new Date();
+
     return new Intl.DateTimeFormat(
       "es-MX",
       {
@@ -32,12 +55,18 @@ function Cotizacion({
         month: "2-digit",
         year: "numeric",
       }
-    ).format(new Date());
+    ).format(fecha);
   }
 
   function imprimirCotizacion() {
     window.print();
   }
+
+  const estiloEtiqueta = {
+    color: "#64748b",
+    fontSize: "13px",
+    marginBottom: "5px",
+  };
 
   return (
     <div
@@ -65,7 +94,9 @@ function Cotizacion({
             "0 20px 60px rgba(0,0,0,.25)",
         }}
       >
+        {/* ============================= */}
         {/* ENCABEZADO */}
+        {/* ============================= */}
 
         <div
           style={{
@@ -135,7 +166,7 @@ function Cotizacion({
                 }}
               >
                 <strong>Folio: </strong>
-                {cotizacion.folio}
+                {cotizacion.folio || "—"}
               </div>
 
               <div
@@ -150,7 +181,9 @@ function Cotizacion({
           </div>
         </div>
 
+        {/* ============================= */}
         {/* CONTENIDO */}
+        {/* ============================= */}
 
         <div
           style={{
@@ -167,7 +200,9 @@ function Cotizacion({
             COTIZACIÓN
           </h1>
 
-          {/* CLIENTE */}
+          {/* ============================= */}
+          {/* DATOS DEL CLIENTE */}
+          {/* ============================= */}
 
           <section
             style={{
@@ -176,13 +211,12 @@ function Cotizacion({
                 "1px solid #e2e8f0",
               borderRadius: "14px",
               padding: "20px",
-              marginBottom: "30px",
+              marginBottom: "20px",
             }}
           >
             <h2
               style={{
-                margin:
-                  "0 0 18px",
+                margin: "0 0 18px",
                 fontSize: "18px",
                 color: "#123f73",
               }}
@@ -199,47 +233,27 @@ function Cotizacion({
               }}
             >
               <div>
-                <div
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    marginBottom: "5px",
-                  }}
-                >
+                <div style={estiloEtiqueta}>
                   Nombre
                 </div>
 
                 <strong>
-                  {cliente.nombre ||
-                    "—"}
+                  {cliente.nombre || "—"}
                 </strong>
               </div>
 
               <div>
-                <div
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    marginBottom: "5px",
-                  }}
-                >
+                <div style={estiloEtiqueta}>
                   Teléfono
                 </div>
 
                 <strong>
-                  {cliente.telefono ||
-                    "—"}
+                  {cliente.telefono || "—"}
                 </strong>
               </div>
 
               <div>
-                <div
-                  style={{
-                    color: "#64748b",
-                    fontSize: "13px",
-                    marginBottom: "5px",
-                  }}
-                >
+                <div style={estiloEtiqueta}>
                   Estado
                 </div>
 
@@ -251,7 +265,83 @@ function Cotizacion({
             </div>
           </section>
 
+          {/* ============================= */}
+          {/* DATOS DEL VEHÍCULO */}
+          {/* ============================= */}
+
+          <section
+            style={{
+              background: "#f8fafc",
+              border:
+                "1px solid #e2e8f0",
+              borderRadius: "14px",
+              padding: "20px",
+              marginBottom: "30px",
+            }}
+          >
+            <h2
+              style={{
+                margin: "0 0 18px",
+                fontSize: "18px",
+                color: "#123f73",
+              }}
+            >
+              Datos del vehículo
+            </h2>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              <div>
+                <div style={estiloEtiqueta}>
+                  Marca
+                </div>
+
+                <strong>
+                  Suzuki
+                </strong>
+              </div>
+
+              <div>
+                <div style={estiloEtiqueta}>
+                  Modelo
+                </div>
+
+                <strong>
+                  {modeloVehiculo || "—"}
+                </strong>
+              </div>
+
+              <div>
+                <div style={estiloEtiqueta}>
+                  Año
+                </div>
+
+                <strong>
+                  {anioVehiculo || "—"}
+                </strong>
+              </div>
+
+              <div>
+                <div style={estiloEtiqueta}>
+                  Versión / Motor
+                </div>
+
+                <strong>
+                  {versionVehiculo || "—"}
+                </strong>
+              </div>
+            </div>
+          </section>
+
+          {/* ============================= */}
           {/* REFACCIONES */}
+          {/* ============================= */}
 
           <h2
             style={{
@@ -334,80 +424,99 @@ function Cotizacion({
               </thead>
 
               <tbody>
-                {items.map(
-                  (item, index) => (
-                    <tr
-                      key={`${item.numeroParte}-${index}`}
+                {items.length > 0 ? (
+                  items.map(
+                    (item, index) => (
+                      <tr
+                        key={`${item.numeroParte}-${index}`}
+                        style={{
+                          borderBottom:
+                            "1px solid #e2e8f0",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding:
+                              "14px",
+                          }}
+                        >
+                          {item.cantidad}
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "14px",
+                          }}
+                        >
+                          {item.descripcion ||
+                            "Refacción Suzuki"}
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "14px",
+                            fontWeight:
+                              "700",
+                          }}
+                        >
+                          {item.numeroParte ||
+                            "—"}
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "14px",
+                            textAlign:
+                              "right",
+                          }}
+                        >
+                          {formatPrice(
+                            item.precioUnitario
+                          )}
+                        </td>
+
+                        <td
+                          style={{
+                            padding:
+                              "14px",
+                            textAlign:
+                              "right",
+                            fontWeight:
+                              "700",
+                          }}
+                        >
+                          {formatPrice(
+                            item.subtotal
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  )
+                ) : (
+                  <tr>
+                    <td
+                      colSpan="5"
                       style={{
-                        borderBottom:
-                          "1px solid #e2e8f0",
+                        padding: "25px",
+                        textAlign: "center",
+                        color: "#64748b",
                       }}
                     >
-                      <td
-                        style={{
-                          padding:
-                            "14px",
-                        }}
-                      >
-                        {item.cantidad}
-                      </td>
-
-                      <td
-                        style={{
-                          padding:
-                            "14px",
-                        }}
-                      >
-                        {item.descripcion ||
-                          "Refacción Suzuki"}
-                      </td>
-
-                      <td
-                        style={{
-                          padding:
-                            "14px",
-                          fontWeight:
-                            "700",
-                        }}
-                      >
-                        {item.numeroParte}
-                      </td>
-
-                      <td
-                        style={{
-                          padding:
-                            "14px",
-                          textAlign:
-                            "right",
-                        }}
-                      >
-                        {formatPrice(
-                          item.precioUnitario
-                        )}
-                      </td>
-
-                      <td
-                        style={{
-                          padding:
-                            "14px",
-                          textAlign:
-                            "right",
-                          fontWeight:
-                            "700",
-                        }}
-                      >
-                        {formatPrice(
-                          item.subtotal
-                        )}
-                      </td>
-                    </tr>
-                  )
+                      No hay refacciones en
+                      esta cotización.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
           </div>
 
+          {/* ============================= */}
           {/* TOTALES */}
+          {/* ============================= */}
 
           <div
             style={{
@@ -473,7 +582,44 @@ function Cotizacion({
             </div>
           </div>
 
+          {/* ============================= */}
+          {/* OBSERVACIONES */}
+          {/* ============================= */}
+
+          {cotizacion.observaciones && (
+            <section
+              style={{
+                marginTop: "30px",
+                background: "#f8fafc",
+                border:
+                  "1px solid #e2e8f0",
+                borderRadius: "14px",
+                padding: "20px",
+              }}
+            >
+              <h3
+                style={{
+                  marginTop: 0,
+                  color: "#123f73",
+                }}
+              >
+                Observaciones
+              </h3>
+
+              <div
+                style={{
+                  color: "#475569",
+                  lineHeight: "1.6",
+                }}
+              >
+                {cotizacion.observaciones}
+              </div>
+            </section>
+          )}
+
+          {/* ============================= */}
           {/* CONDICIONES */}
+          {/* ============================= */}
 
           <section
             style={{
@@ -499,34 +645,31 @@ function Cotizacion({
               }}
             >
               <li>
-                Vigencia de la
-                cotización: 15 días
-                naturales.
+                Vigencia de la cotización:
+                15 días naturales.
               </li>
 
               <li>
-                Precios sujetos a
-                cambio sin previo
-                aviso.
+                Precios sujetos a cambio
+                sin previo aviso.
               </li>
 
               <li>
-                Disponibilidad
-                sujeta al inventario
-                al momento del
+                Disponibilidad sujeta al
+                inventario al momento del
                 pedido.
               </li>
 
               <li>
-                La cotización no
-                constituye una
-                reserva de
-                inventario.
+                La cotización no constituye
+                una reserva de inventario.
               </li>
             </ul>
           </section>
 
+          {/* ============================= */}
           {/* FIRMA */}
+          {/* ============================= */}
 
           <div
             style={{
@@ -564,7 +707,9 @@ function Cotizacion({
             </div>
           </div>
 
+          {/* ============================= */}
           {/* BOTONES */}
+          {/* ============================= */}
 
           <div
             className="cotizacion-actions"

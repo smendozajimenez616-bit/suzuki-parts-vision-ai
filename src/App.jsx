@@ -67,6 +67,21 @@ function App() {
   ] = useState("");
 
   const [
+    modeloVehiculo,
+    setModeloVehiculo,
+  ] = useState("");
+
+  const [
+    anioVehiculo,
+    setAnioVehiculo,
+  ] = useState("");
+
+  const [
+    versionVehiculo,
+    setVersionVehiculo,
+  ] = useState("");
+
+  const [
     cantidadCotizacion,
     setCantidadCotizacion,
   ] = useState(1);
@@ -220,6 +235,9 @@ function App() {
 
     setClienteNombre("");
     setClienteTelefono("");
+    setModeloVehiculo("");
+    setAnioVehiculo("");
+    setVersionVehiculo("");
 
     setCantidadCotizacion(1);
 
@@ -410,20 +428,33 @@ function App() {
     const telefono =
       clienteTelefono.trim();
 
+    const modelo =
+      modeloVehiculo.trim();
+
+    const anio =
+      anioVehiculo.trim();
+
+    const version =
+      versionVehiculo.trim();
+
     const cantidad =
       Math.max(
         1,
         Number(
           cantidadCotizacion
+          
         ) || 1
       );
 
     if (
       !nombre ||
-      !telefono
+      !telefono ||
+      !modelo ||
+      !anio ||
+      !version
     ) {
       setCotizacionError(
-        "Escribe el nombre y el teléfono del cliente."
+        "Completa nombre, teléfono, modelo, año y versión del vehículo."
       );
 
       return;
@@ -458,6 +489,15 @@ function App() {
 
                 telefonoCliente:
                   telefono,
+
+                modeloVehiculo:
+                  modelo,
+
+                anioVehiculo:
+                  anio,
+
+                versionVehiculo:
+                  version,
 
                 items: [
                   {
@@ -632,6 +672,12 @@ function App() {
 
     setClienteTelefono("");
 
+    setModeloVehiculo("");
+
+    setAnioVehiculo("");
+
+    setVersionVehiculo("");
+
     setCantidadCotizacion(1);
 
     setCotizacionError("");
@@ -764,6 +810,24 @@ function App() {
     const cliente =
       cotizacionCreada
         .cliente || {};
+
+    const modelo =
+      cotizacionCreada
+        .modeloVehiculo ||
+      modeloVehiculo ||
+      "";
+
+    const anio =
+      cotizacionCreada
+        .anioVehiculo ||
+      anioVehiculo ||
+      "";
+
+    const version =
+      cotizacionCreada
+        .versionVehiculo ||
+      versionVehiculo ||
+      "";
 
     const items =
       Array.isArray(
@@ -1096,6 +1160,34 @@ function App() {
 
           </div>
 
+        </div>
+
+        <div class="client">
+          <h2>
+            Datos del vehículo
+          </h2>
+
+          <div class="client-grid">
+            <div>
+              <div class="label">Marca</div>
+              <strong>Suzuki</strong>
+            </div>
+
+            <div>
+              <div class="label">Modelo</div>
+              <strong>${escapeHtml(modelo || "—")}</strong>
+            </div>
+
+            <div>
+              <div class="label">Año</div>
+              <strong>${escapeHtml(anio || "—")}</strong>
+            </div>
+
+            <div>
+              <div class="label">Versión / Motor</div>
+              <strong>${escapeHtml(version || "—")}</strong>
+            </div>
+          </div>
         </div>
 
         <h2>
@@ -1748,6 +1840,96 @@ function App() {
                     </label>
 
                     <label>
+                      Modelo Suzuki
+
+                      <input
+                        type="text"
+                        value={
+                          modeloVehiculo
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setModeloVehiculo(
+                            event.target.value
+                          )
+                        }
+                        placeholder="Ejemplo: Swift"
+                        disabled={
+                          creandoCotizacion
+                        }
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border:
+                            "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+
+                    <label>
+                      Año
+
+                      <input
+                        type="text"
+                        value={
+                          anioVehiculo
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setAnioVehiculo(
+                            event.target.value
+                          )
+                        }
+                        placeholder="Ejemplo: 2024"
+                        disabled={
+                          creandoCotizacion
+                        }
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border:
+                            "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+
+                    <label>
+                      Versión / Motor
+
+                      <input
+                        type="text"
+                        value={
+                          versionVehiculo
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setVersionVehiculo(
+                            event.target.value
+                          )
+                        }
+                        placeholder="Ejemplo: GLX 1.2L"
+                        disabled={
+                          creandoCotizacion
+                        }
+                        style={{
+                          width: "100%",
+                          marginTop: 6,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border:
+                            "1px solid #cbd5e1",
+                        }}
+                      />
+                    </label>
+
+                    <label>
                       Cantidad
 
                       <input
@@ -1963,6 +2145,24 @@ function App() {
       cotizacionCreada
         .cliente || {};
 
+    const modelo =
+      cotizacionCreada
+        .modeloVehiculo ||
+      modeloVehiculo ||
+      "";
+
+    const anio =
+      cotizacionCreada
+        .anioVehiculo ||
+      anioVehiculo ||
+      "";
+
+    const version =
+      cotizacionCreada
+        .versionVehiculo ||
+      versionVehiculo ||
+      "";
+
     const items =
       Array.isArray(
         cotizacionCreada.items
@@ -2108,6 +2308,44 @@ function App() {
                 }
               </p>
 
+            </div>
+
+            <div
+              style={{
+                background:
+                  "#f8fafc",
+                border:
+                  "1px solid #e2e8f0",
+                borderRadius: 12,
+                padding: 18,
+                marginTop: 18,
+              }}
+            >
+              <h3>
+                Datos del vehículo
+              </h3>
+
+              <p>
+                <strong>Marca:</strong>{" "}
+                Suzuki
+              </p>
+
+              <p>
+                <strong>Modelo:</strong>{" "}
+                {modelo || "—"}
+              </p>
+
+              <p>
+                <strong>Año:</strong>{" "}
+                {anio || "—"}
+              </p>
+
+              <p>
+                <strong>
+                  Versión / Motor:
+                </strong>{" "}
+                {version || "—"}
+              </p>
             </div>
 
             <h3

@@ -105,99 +105,195 @@ db.serialize(() => {
   // COTIZACIONES
   // ==========================================
 
- db.run(`
-  CREATE TABLE IF NOT EXISTS cotizaciones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    folio TEXT NOT NULL UNIQUE,
-    clienteId INTEGER NOT NULL,
-    fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    estado TEXT NOT NULL DEFAULT 'Pendiente',
-    subtotal REAL NOT NULL DEFAULT 0,
-    total REAL NOT NULL DEFAULT 0,
-    observaciones TEXT DEFAULT '',
-    motivoRechazo TEXT DEFAULT '',
-    detalleMotivoRechazo TEXT DEFAULT '',
-    FOREIGN KEY (clienteId)
-      REFERENCES clientes(id)
-  )
-`);
-// ==========================================
-// MIGRACIONES DE COTIZACIONES
-// ==========================================
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cotizaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      folio TEXT NOT NULL UNIQUE,
+      clienteId INTEGER NOT NULL,
+      fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      estado TEXT NOT NULL DEFAULT 'Pendiente',
+      subtotal REAL NOT NULL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      observaciones TEXT DEFAULT '',
 
-db.all(
-  `PRAGMA table_info(cotizaciones)`,
-  [],
-  (error, columnas) => {
-    if (error) {
-      console.error(
-        "❌ No se pudo revisar la tabla cotizaciones:",
-        error.message
-      );
+      motivoRechazo TEXT DEFAULT '',
+      detalleMotivoRechazo TEXT DEFAULT '',
 
-      return;
-    }
+      modeloVehiculo TEXT DEFAULT '',
+      anioVehiculo TEXT DEFAULT '',
+      versionVehiculo TEXT DEFAULT '',
 
-    const nombresColumnas =
-      columnas.map(
-        (columna) => columna.name
-      );
+      FOREIGN KEY (clienteId)
+        REFERENCES clientes(id)
+    )
+  `);
 
-    if (
-      !nombresColumnas.includes(
-        "motivoRechazo"
-      )
-    ) {
-      db.run(
-        `
-        ALTER TABLE cotizaciones
-        ADD COLUMN motivoRechazo TEXT DEFAULT ''
-        `,
-        (migrationError) => {
-          if (migrationError) {
-            console.error(
-              "❌ Error agregando motivoRechazo:",
-              migrationError.message
+  // ==========================================
+  // MIGRACIONES DE COTIZACIONES
+  // ==========================================
+
+  db.all(
+    `PRAGMA table_info(cotizaciones)`,
+    [],
+    (error, columnas) => {
+      if (error) {
+        console.error(
+          "❌ No se pudo revisar la tabla cotizaciones:",
+          error.message
+        );
+
+        return;
+      }
+
+      const nombresColumnas =
+        columnas.map(
+          (columna) => columna.name
+        );
+
+      // ------------------------------------------
+      // MOTIVO DE RECHAZO
+      // ------------------------------------------
+
+      if (
+        !nombresColumnas.includes(
+          "motivoRechazo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN motivoRechazo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando motivoRechazo:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna motivoRechazo agregada."
             );
-
-            return;
           }
+        );
+      }
 
-          console.log(
-            "✅ Columna motivoRechazo agregada."
-          );
-        }
-      );
-    }
+      if (
+        !nombresColumnas.includes(
+          "detalleMotivoRechazo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN detalleMotivoRechazo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando detalleMotivoRechazo:",
+                migrationError.message
+              );
 
-    if (
-      !nombresColumnas.includes(
-        "detalleMotivoRechazo"
-      )
-    ) {
-      db.run(
-        `
-        ALTER TABLE cotizaciones
-        ADD COLUMN detalleMotivoRechazo TEXT DEFAULT ''
-        `,
-        (migrationError) => {
-          if (migrationError) {
-            console.error(
-              "❌ Error agregando detalleMotivoRechazo:",
-              migrationError.message
+              return;
+            }
+
+            console.log(
+              "✅ Columna detalleMotivoRechazo agregada."
             );
-
-            return;
           }
+        );
+      }
 
-          console.log(
-            "✅ Columna detalleMotivoRechazo agregada."
-          );
-        }
-      );
+      // ------------------------------------------
+      // DATOS DEL VEHÍCULO
+      // ------------------------------------------
+
+      if (
+        !nombresColumnas.includes(
+          "modeloVehiculo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN modeloVehiculo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando modeloVehiculo:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna modeloVehiculo agregada."
+            );
+          }
+        );
+      }
+
+      if (
+        !nombresColumnas.includes(
+          "anioVehiculo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN anioVehiculo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando anioVehiculo:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna anioVehiculo agregada."
+            );
+          }
+        );
+      }
+
+      if (
+        !nombresColumnas.includes(
+          "versionVehiculo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN versionVehiculo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando versionVehiculo:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna versionVehiculo agregada."
+            );
+          }
+        );
+      }
     }
-  }
-);
+  );
 
   db.run(`
     CREATE INDEX IF NOT EXISTS
@@ -210,6 +306,8 @@ db.all(
     idx_cotizaciones_estado
     ON cotizaciones(estado)
   `);
+
+ 
 
   // ==========================================
   // DETALLE DE COTIZACIONES
@@ -224,6 +322,7 @@ db.all(
       cantidad REAL NOT NULL DEFAULT 1,
       precioUnitario REAL NOT NULL DEFAULT 0,
       subtotal REAL NOT NULL DEFAULT 0,
+
       FOREIGN KEY (cotizacionId)
         REFERENCES cotizaciones(id)
     )
