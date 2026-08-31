@@ -880,75 +880,66 @@ function App() {
   }
 
   function imprimirCotizacion() {
-    if (
-      !cotizacionCreada
-    ) {
+    if (!cotizacionCreada) {
       return;
     }
 
     const cliente =
-      cotizacionCreada
-        .cliente || {};
+      cotizacionCreada.cliente || {};
 
     const modelo =
-      cotizacionCreada
-        .modeloVehiculo ||
+      cotizacionCreada.modeloVehiculo ||
       modeloVehiculo ||
       "";
 
     const anio =
-      cotizacionCreada
-        .anioVehiculo ||
+      cotizacionCreada.anioVehiculo ||
       anioVehiculo ||
       "";
 
     const version =
-      cotizacionCreada
-        .versionVehiculo ||
+      cotizacionCreada.versionVehiculo ||
       versionVehiculo ||
       "";
 
+    const vin =
+      cotizacionCreada.vinVehiculo ||
+      vinVehiculo ||
+      "";
+
     const items =
-      Array.isArray(
-        cotizacionCreada.items
-      )
+      Array.isArray(cotizacionCreada.items)
         ? cotizacionCreada.items
         : [];
 
     const fecha =
-      new Intl.DateTimeFormat(
-        "es-MX",
-        {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        }
-      ).format(
-        new Date()
+      new Intl.DateTimeFormat("es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }).format(new Date());
+
+    const datosInstalacion =
+      obtenerDatosInstalacion(
+        cotizacionCreada.total
       );
 
-    const filas =
-      items
-        .map(
-          (item) => `
+    const filas = items
+      .map(
+        (item) => `
           <tr>
-            <td>${escapeHtml(
-              item.cantidad
-            )}</td>
-
+            <td class="center">
+              ${escapeHtml(item.cantidad)}
+            </td>
             <td>
               ${escapeHtml(
                 item.descripcion ||
                   "Refacción Suzuki"
               )}
             </td>
-
             <td>
-              ${escapeHtml(
-                item.numeroParte
-              )}
+              ${escapeHtml(item.numeroParte)}
             </td>
-
             <td class="money">
               ${escapeHtml(
                 formatPrice(
@@ -956,31 +947,26 @@ function App() {
                 )
               )}
             </td>
-
             <td class="money">
               ${escapeHtml(
-                formatPrice(
-                  item.subtotal
-                )
+                formatPrice(item.subtotal)
               )}
             </td>
           </tr>
         `
-        )
-        .join("");
+      )
+      .join("");
 
-    const ventana =
-      window.open(
-        "",
-        "_blank",
-        "width=1000,height=800"
-      );
+    const ventana = window.open(
+      "",
+      "_blank",
+      "width=1100,height=850"
+    );
 
     if (!ventana) {
       alert(
         "El navegador bloqueó la ventana de impresión."
       );
-
       return;
     }
 
@@ -989,7 +975,10 @@ function App() {
       <html lang="es">
       <head>
         <meta charset="UTF-8" />
-
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        />
         <title>
           Cotización ${escapeHtml(
             cotizacionCreada.folio
@@ -1001,531 +990,681 @@ function App() {
             box-sizing: border-box;
           }
 
+          @page {
+            size: A4;
+            margin: 8mm 10mm 8mm;
+          }
+
           body {
             margin: 0;
-            padding: 35px;
             font-family: Arial, Helvetica, sans-serif;
-            color: #1e293b;
+            color: #243247;
             background: #ffffff;
+            font-size: 11px;
           }
 
-          .header {
+          .sheet {
+            width: 100%;
+            max-width: 920px;
+            margin: 0 auto;
+          }
+
+          .top {
+            display: grid;
+            grid-template-columns: 1fr 255px;
+            gap: 28px;
+            align-items: start;
+            padding: 4px 0 14px;
+            border-bottom: 4px solid #174a86;
+          }
+
+          .suzuki-brand {
             display: flex;
-            justify-content: space-between;
-            gap: 30px;
-            border-bottom: 5px solid #123f73;
-            padding-bottom: 24px;
+            align-items: center;
+            margin-bottom: 8px;
           }
 
-          .brand {
+          .suzuki-logo {
+            width: 235px;
+            max-width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+          }
+
+          .suzuki-symbol {
+            width: 42px;
+            height: 42px;
+            position: relative;
+          }
+
+          .suzuki-symbol::before,
+          .suzuki-symbol::after {
+            content: "";
+            position: absolute;
+            left: 5px;
+            width: 31px;
+            height: 13px;
+            background: #df0038;
+            transform: skewX(-35deg);
+          }
+
+          .suzuki-symbol::before {
+            top: 6px;
+          }
+
+          .suzuki-symbol::after {
+            bottom: 6px;
+            transform: skewX(35deg);
+          }
+
+          .suzuki-word {
+            color: #174a86;
             font-size: 34px;
+            line-height: 1;
             font-weight: 900;
-            color: #123f73;
+            letter-spacing: -1.5px;
           }
 
-          .subtitle {
-            margin-top: 5px;
+          .by-your-side {
+            color: #111827;
+            font-size: 12px;
             font-weight: 700;
+            margin-top: 3px;
+            font-style: italic;
+          }
+
+          .company {
+            color: #174a86;
+            font-size: 18px;
+            font-weight: 800;
+            margin-top: 4px;
+          }
+
+          .dealer,
+          .department {
+            color: #64748b;
+            line-height: 1.5;
           }
 
           .meta {
-            border: 1px solid #dbe3ec;
-            padding: 16px 20px;
-            border-radius: 10px;
-            min-width: 250px;
+            border: 1px solid #d8e0e9;
+            border-radius: 17px;
+            padding: 15px 17px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
           }
 
-          h1 {
-            margin-top: 35px;
-          }
-
-          h2 {
-            color: #123f73;
-          }
-
-          .client {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 25px 0;
-          }
-
-          .client-grid {
+          .meta-row {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            grid-template-columns: 72px 1fr;
+            gap: 8px;
+            margin: 7px 0;
+            align-items: baseline;
           }
 
-          .label {
-            color: #64748b;
-            font-size: 12px;
-            margin-bottom: 5px;
+          .meta-row strong {
+            color: #1f2937;
+          }
+
+          .document-title {
+            margin: 12px 0 9px;
+            color: #9aa0a6;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: .4px;
+          }
+
+          .vehicle-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 34px;
+            row-gap: 0;
+            margin-bottom: 10px;
+          }
+
+          .field-line {
+            display: grid;
+            grid-template-columns: 138px 1fr;
+            gap: 8px;
+            min-height: 29px;
+            align-items: center;
+            border-bottom: 1px solid #e5e7eb;
+          }
+
+          .field-line .field-label {
+            color: #174a86;
+            font-weight: 800;
+          }
+
+          .field-line .field-value {
+            font-weight: 500;
+            overflow-wrap: anywhere;
+          }
+
+          .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #df0038;
+            font-size: 16px;
+            font-weight: 900;
+            margin: 14px 0 7px;
+            text-transform: uppercase;
+          }
+
+          .section-mark {
+            width: 8px;
+            height: 31px;
+            border-left: 5px solid #df0038;
+            border-radius: 50%;
           }
 
           table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 12px;
+            table-layout: fixed;
+          }
+
+          th,
+          td {
+            border: 1px solid #d8dee8;
+            padding: 6px 7px;
+            vertical-align: middle;
           }
 
           th {
-            background: #123f73;
-            color: white;
-            padding: 12px;
+            background: #f8fafc;
+            color: #174a86;
+            font-size: 10.5px;
+            font-weight: 800;
             text-align: left;
           }
 
-          td {
-            padding: 12px;
-            border-bottom: 1px solid #e2e8f0;
+          .parts-table th:nth-child(1) {
+            width: 8%;
+          }
+
+          .parts-table th:nth-child(2) {
+            width: 34%;
+          }
+
+          .parts-table th:nth-child(3) {
+            width: 21%;
+          }
+
+          .parts-table th:nth-child(4),
+          .parts-table th:nth-child(5) {
+            width: 18.5%;
           }
 
           .money {
             text-align: right;
+            white-space: nowrap;
+          }
+
+          .center {
+            text-align: center;
+          }
+
+          .labor-table th:nth-child(1) {
+            width: 40%;
+          }
+
+          .labor-table th:nth-child(2) {
+            width: 12%;
+            text-align: center;
+          }
+
+          .labor-table th:nth-child(3),
+          .labor-table th:nth-child(4) {
+            width: 24%;
+            text-align: right;
+          }
+
+          .installation-note {
+            margin-top: 7px;
+            padding: 8px 10px;
+            border: 1px solid #c9dcf4;
+            background: #f3f8fe;
+            border-radius: 9px;
+            color: #174a86;
+            font-weight: 700;
           }
 
           .totals {
-            width: 330px;
-            margin-left: auto;
-            margin-top: 25px;
-            border: 1px solid #dbe3ec;
-            border-radius: 10px;
-            padding: 18px;
+            width: 410px;
+            max-width: 100%;
+            margin: 12px 0 0 auto;
+            border: 1px solid #d8dee8;
+            border-radius: 16px;
+            overflow: hidden;
           }
 
           .total-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            gap: 20px;
+            padding: 9px 14px;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 12px;
+          }
+
+          .total-row:last-child {
+            border-bottom: 0;
+          }
+
+          .total-row strong {
+            white-space: nowrap;
           }
 
           .grand-total {
-            color: #123f73;
-            font-size: 20px;
-            font-weight: 800;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
+            color: #174a86;
+            font-size: 15px;
+            font-weight: 900;
+            background: #fbfdff;
           }
 
           .conditions {
-            margin-top: 35px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 20px;
-            line-height: 1.7;
+            margin-top: 14px;
+            padding-top: 9px;
+            border-top: 2px solid #df0038;
+            page-break-inside: avoid;
+          }
+
+          .conditions h3 {
+            color: #174a86;
+            margin: 0 0 5px;
+            font-size: 14px;
+          }
+
+          .conditions ul {
+            margin: 0;
+            padding-left: 19px;
+            color: #475569;
+            line-height: 1.35;
           }
 
           .signatures {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 70px;
-            margin-top: 70px;
+            margin-top: 26px;
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
 
           .signature {
             border-top: 1px solid #334155;
             text-align: center;
-            padding-top: 8px;
+            padding-top: 5px;
+            color: #475569;
+          }
+
+          .footer-note {
+            margin-top: 10px;
+            color: #64748b;
+            font-size: 10px;
+            line-height: 1.4;
           }
 
           @media print {
             body {
-              padding: 10px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              font-size: 10.5px;
+            }
+
+            .sheet {
+              max-width: none;
+            }
+
+            .top,
+            .vehicle-grid,
+            .parts-table,
+            .labor-table,
+            .installation-note,
+            .totals,
+            .conditions,
+            .signatures,
+            .footer-note {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+
+            .footer-note {
+              margin-top: 8px;
             }
           }
         </style>
       </head>
 
       <body>
+        <main class="sheet">
 
-        <div class="header">
-
-          <div>
-            <div class="brand">
-              SUZUKI
-            </div>
-
-            <div class="subtitle">
-              Suzuki Parts Vision AI
-            </div>
-
-            <p>
-              Departamento de Refacciones
-            </p>
-          </div>
-
-          <div class="meta">
+          <header class="top">
             <div>
-              <strong>
-                Fecha:
-              </strong>
-              ${fecha}
-            </div>
-
-            <br />
-
-            <div>
-              <strong>
-                Folio:
-              </strong>
-              ${escapeHtml(
-                cotizacionCreada.folio
-              )}
-            </div>
-
-            <br />
-
-            <div>
-              <strong>
-                Vigencia:
-              </strong>
-              15 días naturales
-            </div>
-          </div>
-
-        </div>
-
-        <h1>
-          COTIZACIÓN
-        </h1>
-
-        <div class="client">
-
-          <h2>
-            Datos del cliente
-          </h2>
-
-          <div class="client-grid">
-
-            <div>
-              <div class="label">
-                Nombre
+              <div class="suzuki-brand">
+                <img
+                  src="${window.location.origin}/suzuki-logo.jpeg"
+                  alt="Suzuki By Your Side"
+                  class="suzuki-logo"
+                />
               </div>
 
-              <strong>
+              <div class="company">
+                Autos Japoneses de Toluca SA de CV
+              </div>
+              <div class="dealer">
+                Suzuki Toluca
+              </div>
+              <div class="department">
+                Departamento: Refacciones
+              </div>
+            </div>
+
+            <div class="meta">
+              <div class="meta-row">
+                <strong>Fecha:</strong>
+                <span>${fecha}</span>
+              </div>
+
+              <div class="meta-row">
+                <strong>Folio:</strong>
+                <span>
+                  ${escapeHtml(
+                    cotizacionCreada.folio
+                  )}
+                </span>
+              </div>
+
+              <div class="meta-row">
+                <strong>Vigencia:</strong>
+                <span>15 días naturales</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="document-title">
+            COTIZACIÓN
+          </div>
+
+          <section class="vehicle-grid">
+            <div class="field-line">
+              <div class="field-label">
+                Nombre del cliente:
+              </div>
+              <div class="field-value">
                 ${escapeHtml(
                   cliente.nombre ||
-                    clienteNombre
+                    clienteNombre ||
+                    "—"
                 )}
-              </strong>
+              </div>
             </div>
 
-            <div>
-              <div class="label">
-                Teléfono
+            <div class="field-line">
+              <div class="field-label">
+                Teléfono:
               </div>
-
-              <strong>
+              <div class="field-value">
                 ${escapeHtml(
                   cliente.telefono ||
-                    clienteTelefono
+                    clienteTelefono ||
+                    "—"
                 )}
-              </strong>
+              </div>
             </div>
 
-            <div>
-              <div class="label">
-                Estado
+            <div class="field-line">
+              <div class="field-label">
+                Modelo Suzuki:
               </div>
+              <div class="field-value">
+                ${escapeHtml(modelo || "—")}
+              </div>
+            </div>
 
-              <strong>
+            <div class="field-line">
+              <div class="field-label">
+                Año:
+              </div>
+              <div class="field-value">
+                ${escapeHtml(anio || "—")}
+              </div>
+            </div>
+
+            <div class="field-line">
+              <div class="field-label">
+                VIN:
+              </div>
+              <div class="field-value">
                 ${escapeHtml(
-                  cotizacionCreada.estado ||
-                    "Pendiente"
+                  vin || "No proporcionado"
                 )}
-              </strong>
+              </div>
             </div>
 
-          </div>
-
-        </div>
-
-        <div class="client">
-          <h2>
-            Datos del vehículo
-          </h2>
-
-          <div class="client-grid">
-            <div>
-              <div class="label">
-                Marca
+            <div class="field-line">
+              <div class="field-label">
+                Versión / Motor:
               </div>
-              <strong>
-                Suzuki
-              </strong>
-            </div>
-
-            <div>
-              <div class="label">
-                VIN
-              </div>
-              <strong>
-                ${escapeHtml(
-                  vinVehiculo || "No proporcionado"
-                )}
-              </strong>
-            </div>
-
-            <div>
-              <div class="label">
-                Modelo
-              </div>
-              <strong>
-                ${escapeHtml(
-                  modelo || "—"
-                )}
-              </strong>
-            </div>
-
-            <div>
-              <div class="label">
-                Año
-              </div>
-              <strong>
-                ${escapeHtml(
-                  anio || "—"
-                )}
-              </strong>
-            </div>
-
-            <div>
-              <div class="label">
-                Versión / Motor
-              </div>
-              <strong>
+              <div class="field-value">
                 ${escapeHtml(
                   version || "—"
                 )}
+              </div>
+            </div>
+          </section>
+
+          <div class="section-title">
+            <span class="section-mark"></span>
+            <span>Refacciones</span>
+          </div>
+
+          <table class="parts-table">
+            <thead>
+              <tr>
+                <th>Cantidad</th>
+                <th>Descripción</th>
+                <th>No. parte</th>
+                <th class="money">
+                  Precio unitario
+                </th>
+                <th class="money">
+                  Precio total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filas}
+            </tbody>
+          </table>
+
+          <div class="section-title">
+            <span class="section-mark"></span>
+            <span>Mano de obra</span>
+          </div>
+
+          <table class="labor-table">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Hrs</th>
+                <th>Tarifa</th>
+                <th>Mano de obra</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  ${escapeHtml(
+                    operacionInstalacion ||
+                      "Pendiente de validación por Servicio"
+                  )}
+                </td>
+                <td class="center">
+                  ${
+                    datosInstalacion.tiempoValido
+                      ? escapeHtml(
+                          tiempoInstalacion
+                        )
+                      : "—"
+                  }
+                </td>
+                <td class="money">
+                  ${escapeHtml(
+                    formatPrice(
+                      TARIFA_MANO_OBRA_MOSTRADOR
+                    )
+                  )} / h
+                </td>
+                <td class="money">
+                  ${
+                    datosInstalacion.tiempoValido
+                      ? escapeHtml(
+                          formatPrice(
+                            datosInstalacion.manoObra
+                          )
+                        )
+                      : "Pendiente"
+                  }
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="installation-note">
+            Tarifa especial de instalación para
+            clientes de mostrador: $550 por hora,
+            IVA incluido.
+            ${
+              fuenteTiempoInstalacion
+                ? `<br />Fuente del tiempo: ${escapeHtml(
+                    fuenteTiempoInstalacion
+                  )}.`
+                : ""
+            }
+          </div>
+
+          <div class="totals">
+            <div class="total-row">
+              <span>Total de refacciones</span>
+              <strong>
+                ${escapeHtml(
+                  formatPrice(
+                    cotizacionCreada.total
+                  )
+                )}
+              </strong>
+            </div>
+
+            <div class="total-row">
+              <span>Mano de obra</span>
+              <strong>
+                ${
+                  datosInstalacion.tiempoValido
+                    ? escapeHtml(
+                        formatPrice(
+                          datosInstalacion.manoObra
+                        )
+                      )
+                    : "Pendiente"
+                }
+              </strong>
+            </div>
+
+            ${
+              Number(
+                conceptosAdicionales || 0
+              ) > 0
+                ? `
+                  <div class="total-row">
+                    <span>
+                      Conceptos adicionales
+                    </span>
+                    <strong>
+                      ${escapeHtml(
+                        formatPrice(
+                          Number(
+                            conceptosAdicionales
+                          )
+                        )
+                      )}
+                    </strong>
+                  </div>
+                `
+                : ""
+            }
+
+            <div class="total-row grand-total">
+              <span>
+                ${
+                  datosInstalacion.tiempoValido
+                    ? "TOTAL INSTALADO"
+                    : "TOTAL REFACCIONES"
+                }
+              </span>
+              <strong>
+                ${escapeHtml(
+                  formatPrice(
+                    datosInstalacion.tiempoValido
+                      ? datosInstalacion.totalInstalado
+                      : cotizacionCreada.total
+                  )
+                )}
               </strong>
             </div>
           </div>
-        </div>
 
-        <h2>
-          Refacciones
-        </h2>
+          <section class="conditions">
+            <h3>Condiciones</h3>
+            <ul>
+              <li>
+                Vigencia de la cotización:
+                15 días naturales.
+              </li>
+              <li>
+                Precios sujetos a cambio
+                sin previo aviso.
+              </li>
+              <li>
+                Disponibilidad sujeta al
+                inventario al momento del pedido.
+              </li>
+              <li>
+                La cotización no representa
+                una reserva de inventario.
+              </li>
+              <li>
+                El VIN es recomendado para
+                validar compatibilidad, pero
+                no es obligatorio para generar
+                la cotización.
+              </li>
+            </ul>
+          </section>
 
-        <table>
-
-          <thead>
-            <tr>
-              <th>Cant.</th>
-              <th>Descripción</th>
-              <th>No. parte</th>
-              <th>Precio unitario</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${filas}
-          </tbody>
-
-        </table>
-
-        <div class="totals">
-
-          <div class="total-row">
-            <span>
-              Subtotal
-            </span>
-
-            <strong>
-              ${escapeHtml(
-                formatPrice(
-                  cotizacionCreada.subtotal
-                )
-              )}
-            </strong>
+          <div class="signatures">
+            <div class="signature">
+              Cliente
+            </div>
+            <div class="signature">
+              Asesor de refacciones
+            </div>
           </div>
 
-          <div class="total-row grand-total">
-            <span>
-              TOTAL
-            </span>
-
-            <span>
-              ${escapeHtml(
-                formatPrice(
-                  cotizacionCreada.total
-                )
-              )}
-            </span>
+          <div class="footer-note">
+            Cotización generada por Suzuki Parts
+            Vision AI — Suzuki Toluca.
           </div>
 
-        </div>
-
-        <div class="client">
-          <h2>
-            Instalación en Suzuki Toluca
-          </h2>
-
-          <p>
-            <strong>
-              Operación de instalación:
-            </strong>
-            ${escapeHtml(
-              operacionInstalacion ||
-                "Pendiente de validación por Servicio"
-            )}
-          </p>
-
-          <p>
-            <strong>
-              Tiempo estándar:
-            </strong>
-            ${
-              obtenerDatosInstalacion(
-                cotizacionCreada.total
-              ).tiempoValido
-                ? `${escapeHtml(
-                    tiempoInstalacion
-                  )} h`
-                : "Tiempo de instalación pendiente de validación por Servicio"
-            }
-          </p>
-
-          <p>
-            <strong>
-              Fuente del tiempo:
-            </strong>
-            ${escapeHtml(
-              fuenteTiempoInstalacion ||
-                "Pendiente de validación"
-            )}
-          </p>
-
-          <p>
-            <strong>
-              Tarifa especial:
-            </strong>
-            $550.00 por hora, IVA incluido
-          </p>
-
-          <p>
-            <strong>
-              Total mano de obra:
-            </strong>
-            ${
-              obtenerDatosInstalacion(
-                cotizacionCreada.total
-              ).tiempoValido
-                ? escapeHtml(
-                    formatPrice(
-                      obtenerDatosInstalacion(
-                        cotizacionCreada.total
-                      ).manoObra
-                    )
-                  )
-                : "Pendiente de validación"
-            }
-          </p>
-
-          ${
-            Number(
-              conceptosAdicionales || 0
-            ) > 0
-              ? `
-                <p>
-                  <strong>
-                    Conceptos adicionales autorizados:
-                  </strong>
-                  ${escapeHtml(
-                    formatPrice(
-                      Number(
-                        conceptosAdicionales
-                      )
-                    )
-                  )}
-                </p>
-              `
-              : ""
-          }
-
-          <p>
-            <strong>
-              Total instalado:
-            </strong>
-            ${
-              obtenerDatosInstalacion(
-                cotizacionCreada.total
-              ).tiempoValido
-                ? escapeHtml(
-                    formatPrice(
-                      obtenerDatosInstalacion(
-                        cotizacionCreada.total
-                      ).totalInstalado
-                    )
-                  )
-                : "Pendiente de validación"
-            }
-          </p>
-
-          <p
-            style="
-              margin-top: 18px;
-              padding: 12px;
-              border-radius: 8px;
-              background: #eff6ff;
-              border: 1px solid #bfdbfe;
-              color: #123f73;
-              font-weight: 700;
-            "
-          >
-            Tarifa especial de instalación para clientes de mostrador:
-            $550 por hora, IVA incluido.
-          </p>
-        </div>
-
-        <div class="conditions">
-
-          <h2>
-            Condiciones
-          </h2>
-
-          <ul>
-            <li>
-              Vigencia de la cotización:
-              15 días naturales.
-            </li>
-
-            <li>
-              Precios sujetos a cambio
-              sin previo aviso.
-            </li>
-
-            <li>
-              Disponibilidad sujeta al
-              inventario al momento del
-              pedido.
-            </li>
-
-            <li>
-              La cotización no representa
-              una reserva de inventario.
-            </li>
-          </ul>
-
-        </div>
-
-        <div class="signatures">
-
-          <div class="signature">
-            Cliente
-          </div>
-
-          <div class="signature">
-            Asesor de refacciones
-          </div>
-
-        </div>
+        </main>
 
         <script>
           window.onload = function () {
             window.print();
           };
         </script>
-
       </body>
       </html>
     `);
@@ -2978,10 +3117,6 @@ function App() {
       cotizacion.versionVehiculo ||
       versionVehiculo ||
       "";
-
-    function imprimirCotizacion() {
-      window.print();
-    }
 
     return (
       <div
