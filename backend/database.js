@@ -127,6 +127,12 @@ db.serialize(() => {
       modeloVehiculo TEXT DEFAULT '',
       anioVehiculo TEXT DEFAULT '',
       versionVehiculo TEXT DEFAULT '',
+      vinVehiculo TEXT DEFAULT '',
+
+      operacionInstalacion TEXT DEFAULT '',
+      tiempoInstalacion REAL DEFAULT 0,
+      fuenteTiempo TEXT DEFAULT '',
+      conceptosAdicionales TEXT DEFAULT '',
 
       interesaTomaCuenta INTEGER NOT NULL DEFAULT 0,
       interesaPromociones INTEGER NOT NULL DEFAULT 0,
@@ -301,6 +307,145 @@ db.serialize(() => {
         );
       }
 
+      if (
+        !nombresColumnas.includes(
+          "vinVehiculo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN vinVehiculo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando vinVehiculo:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna vinVehiculo agregada."
+            );
+          }
+        );
+      }
+
+      // ======================================
+      // INSTALACIÓN SUZUKI TOLUCA
+      // ======================================
+
+      if (
+        !nombresColumnas.includes(
+          "operacionInstalacion"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN operacionInstalacion TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando operacionInstalacion:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna operacionInstalacion agregada."
+            );
+          }
+        );
+      }
+
+      if (
+        !nombresColumnas.includes(
+          "tiempoInstalacion"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN tiempoInstalacion REAL DEFAULT 0
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando tiempoInstalacion:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna tiempoInstalacion agregada."
+            );
+          }
+        );
+      }
+
+      if (
+        !nombresColumnas.includes(
+          "fuenteTiempo"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN fuenteTiempo TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando fuenteTiempo:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna fuenteTiempo agregada."
+            );
+          }
+        );
+      }
+
+      if (
+        !nombresColumnas.includes(
+          "conceptosAdicionales"
+        )
+      ) {
+        db.run(
+          `
+          ALTER TABLE cotizaciones
+          ADD COLUMN conceptosAdicionales TEXT DEFAULT ''
+          `,
+          (migrationError) => {
+            if (migrationError) {
+              console.error(
+                "❌ Error agregando conceptosAdicionales:",
+                migrationError.message
+              );
+
+              return;
+            }
+
+            console.log(
+              "✅ Columna conceptosAdicionales agregada."
+            );
+          }
+        );
+      }
+
       // ======================================
       // INTERÉS COMERCIAL
       // ======================================
@@ -374,8 +519,6 @@ db.serialize(() => {
     idx_cotizaciones_estado
     ON cotizaciones(estado)
   `);
-
- 
 
   // ==========================================
   // DETALLE DE COTIZACIONES

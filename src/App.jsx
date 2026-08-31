@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
@@ -16,6 +12,10 @@ import {
 } from "./services/visionService";
 
 import API_URL from "./services/api";
+
+import {
+  imprimirCotizacionOficial,
+} from "./utils/cotizacionPrinter";
 
 import "./App.css";
 
@@ -535,6 +535,20 @@ function App() {
               vinVehiculo:
                 vin,
 
+              operacionInstalacion:
+                operacionInstalacion.trim(),
+
+              tiempoInstalacion:
+                Number(
+                  tiempoInstalacion || 0
+                ),
+
+              fuenteTiempo:
+                fuenteTiempoInstalacion.trim(),
+
+              conceptosAdicionales:
+                conceptosAdicionales,
+
               // NUEVO
               interesaTomaCuenta:
                 interesaTomaCuenta,
@@ -849,827 +863,62 @@ function App() {
 
   // ==========================================
   // IMPRIMIR COTIZACIÓN
+  // PLANTILLA OFICIAL COMPARTIDA
   // ==========================================
-
-  function escapeHtml(
-    valor
-  ) {
-    return String(
-      valor ?? ""
-    )
-      .replace(
-        /&/g,
-        "&amp;"
-      )
-      .replace(
-        /</g,
-        "&lt;"
-      )
-      .replace(
-        />/g,
-        "&gt;"
-      )
-      .replace(
-        /"/g,
-        "&quot;"
-      )
-      .replace(
-        /'/g,
-        "&#039;"
-      );
-  }
 
   function imprimirCotizacion() {
     if (!cotizacionCreada) {
       return;
     }
 
-    const cliente =
-      cotizacionCreada.cliente || {};
-
-    const modelo =
-      cotizacionCreada.modeloVehiculo ||
-      modeloVehiculo ||
-      "";
-
-    const anio =
-      cotizacionCreada.anioVehiculo ||
-      anioVehiculo ||
-      "";
-
-    const version =
-      cotizacionCreada.versionVehiculo ||
-      versionVehiculo ||
-      "";
-
-    const vin =
-      cotizacionCreada.vinVehiculo ||
-      vinVehiculo ||
-      "";
-
-    const items =
-      Array.isArray(cotizacionCreada.items)
-        ? cotizacionCreada.items
-        : [];
-
-    const fecha =
-      new Intl.DateTimeFormat("es-MX", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      }).format(new Date());
-
-    const datosInstalacion =
-      obtenerDatosInstalacion(
-        cotizacionCreada.total
-      );
-
-    const filas = items
-      .map(
-        (item) => `
-          <tr>
-            <td class="center">
-              ${escapeHtml(item.cantidad)}
-            </td>
-            <td>
-              ${escapeHtml(
-                item.descripcion ||
-                  "Refacción Suzuki"
-              )}
-            </td>
-            <td>
-              ${escapeHtml(item.numeroParte)}
-            </td>
-            <td class="money">
-              ${escapeHtml(
-                formatPrice(
-                  item.precioUnitario
-                )
-              )}
-            </td>
-            <td class="money">
-              ${escapeHtml(
-                formatPrice(item.subtotal)
-              )}
-            </td>
-          </tr>
-        `
-      )
-      .join("");
-
-    const ventana = window.open(
-      "",
-      "_blank",
-      "width=1100,height=850"
-    );
-
-    if (!ventana) {
-      alert(
-        "El navegador bloqueó la ventana de impresión."
-      );
-      return;
-    }
-
-    ventana.document.write(`
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="UTF-8" />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1"
-        />
-        <title>
-          Cotización ${escapeHtml(
-            cotizacionCreada.folio
-          )}
-        </title>
-
-        <style>
-          * {
-            box-sizing: border-box;
-          }
-
-          @page {
-            size: A4;
-            margin: 8mm 10mm 8mm;
-          }
-
-          body {
-            margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            color: #243247;
-            background: #ffffff;
-            font-size: 11px;
-          }
-
-          .sheet {
-            width: 100%;
-            max-width: 920px;
-            margin: 0 auto;
-          }
-
-          .top {
-            display: grid;
-            grid-template-columns: 1fr 255px;
-            gap: 28px;
-            align-items: start;
-            padding: 4px 0 14px;
-            border-bottom: 4px solid #174a86;
-          }
-
-          .suzuki-brand {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-          }
-
-          .suzuki-logo {
-            width: 235px;
-            max-width: 100%;
-            height: auto;
-            display: block;
-            object-fit: contain;
-          }
-
-          .suzuki-symbol {
-            width: 42px;
-            height: 42px;
-            position: relative;
-          }
-
-          .suzuki-symbol::before,
-          .suzuki-symbol::after {
-            content: "";
-            position: absolute;
-            left: 5px;
-            width: 31px;
-            height: 13px;
-            background: #df0038;
-            transform: skewX(-35deg);
-          }
-
-          .suzuki-symbol::before {
-            top: 6px;
-          }
-
-          .suzuki-symbol::after {
-            bottom: 6px;
-            transform: skewX(35deg);
-          }
-
-          .suzuki-word {
-            color: #174a86;
-            font-size: 34px;
-            line-height: 1;
-            font-weight: 900;
-            letter-spacing: -1.5px;
-          }
-
-          .by-your-side {
-            color: #111827;
-            font-size: 12px;
-            font-weight: 700;
-            margin-top: 3px;
-            font-style: italic;
-          }
-
-          .company {
-            color: #174a86;
-            font-size: 18px;
-            font-weight: 800;
-            margin-top: 4px;
-          }
-
-          .dealer,
-          .department {
-            color: #64748b;
-            line-height: 1.5;
-          }
-
-          .meta {
-            border: 1px solid #d8e0e9;
-            border-radius: 17px;
-            padding: 15px 17px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-          }
-
-          .meta-row {
-            display: grid;
-            grid-template-columns: 72px 1fr;
-            gap: 8px;
-            margin: 7px 0;
-            align-items: baseline;
-          }
-
-          .meta-row strong {
-            color: #1f2937;
-          }
-
-          .document-title {
-            margin: 12px 0 9px;
-            color: #9aa0a6;
-            font-size: 18px;
-            font-weight: 900;
-            letter-spacing: .4px;
-          }
-
-          .vehicle-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            column-gap: 34px;
-            row-gap: 0;
-            margin-bottom: 10px;
-          }
-
-          .field-line {
-            display: grid;
-            grid-template-columns: 138px 1fr;
-            gap: 8px;
-            min-height: 29px;
-            align-items: center;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .field-line .field-label {
-            color: #174a86;
-            font-weight: 800;
-          }
-
-          .field-line .field-value {
-            font-weight: 500;
-            overflow-wrap: anywhere;
-          }
-
-          .section-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #df0038;
-            font-size: 16px;
-            font-weight: 900;
-            margin: 14px 0 7px;
-            text-transform: uppercase;
-          }
-
-          .section-mark {
-            width: 8px;
-            height: 31px;
-            border-left: 5px solid #df0038;
-            border-radius: 50%;
-          }
-
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-          }
-
-          th,
-          td {
-            border: 1px solid #d8dee8;
-            padding: 6px 7px;
-            vertical-align: middle;
-          }
-
-          th {
-            background: #f8fafc;
-            color: #174a86;
-            font-size: 10.5px;
-            font-weight: 800;
-            text-align: left;
-          }
-
-          .parts-table th:nth-child(1) {
-            width: 8%;
-          }
-
-          .parts-table th:nth-child(2) {
-            width: 34%;
-          }
-
-          .parts-table th:nth-child(3) {
-            width: 21%;
-          }
-
-          .parts-table th:nth-child(4),
-          .parts-table th:nth-child(5) {
-            width: 18.5%;
-          }
-
-          .money {
-            text-align: right;
-            white-space: nowrap;
-          }
-
-          .center {
-            text-align: center;
-          }
-
-          .labor-table th:nth-child(1) {
-            width: 40%;
-          }
-
-          .labor-table th:nth-child(2) {
-            width: 12%;
-            text-align: center;
-          }
-
-          .labor-table th:nth-child(3),
-          .labor-table th:nth-child(4) {
-            width: 24%;
-            text-align: right;
-          }
-
-          .installation-note {
-            margin-top: 7px;
-            padding: 8px 10px;
-            border: 1px solid #c9dcf4;
-            background: #f3f8fe;
-            border-radius: 9px;
-            color: #174a86;
-            font-weight: 700;
-          }
-
-          .totals {
-            width: 410px;
-            max-width: 100%;
-            margin: 12px 0 0 auto;
-            border: 1px solid #d8dee8;
-            border-radius: 16px;
-            overflow: hidden;
-          }
-
-          .total-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 20px;
-            padding: 9px 14px;
-            border-bottom: 1px solid #e5e7eb;
-            font-size: 12px;
-          }
-
-          .total-row:last-child {
-            border-bottom: 0;
-          }
-
-          .total-row strong {
-            white-space: nowrap;
-          }
-
-          .grand-total {
-            color: #174a86;
-            font-size: 15px;
-            font-weight: 900;
-            background: #fbfdff;
-          }
-
-          .conditions {
-            margin-top: 14px;
-            padding-top: 9px;
-            border-top: 2px solid #df0038;
-            page-break-inside: avoid;
-          }
-
-          .conditions h3 {
-            color: #174a86;
-            margin: 0 0 5px;
-            font-size: 14px;
-          }
-
-          .conditions ul {
-            margin: 0;
-            padding-left: 19px;
-            color: #475569;
-            line-height: 1.35;
-          }
-
-          .signatures {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 70px;
-            margin-top: 26px;
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-
-          .signature {
-            border-top: 1px solid #334155;
-            text-align: center;
-            padding-top: 5px;
-            color: #475569;
-          }
-
-          .footer-note {
-            margin-top: 10px;
-            color: #64748b;
-            font-size: 10px;
-            line-height: 1.4;
-          }
-
-          @media print {
-            body {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-              font-size: 10.5px;
-            }
-
-            .sheet {
-              max-width: none;
-            }
-
-            .top,
-            .vehicle-grid,
-            .parts-table,
-            .labor-table,
-            .installation-note,
-            .totals,
-            .conditions,
-            .signatures,
-            .footer-note {
-              break-inside: avoid;
-              page-break-inside: avoid;
-            }
-
-            .footer-note {
-              margin-top: 8px;
-            }
-          }
-        </style>
-      </head>
-
-      <body>
-        <main class="sheet">
-
-          <header class="top">
-            <div>
-              <div class="suzuki-brand">
-                <img
-                  src="${window.location.origin}/suzuki-logo.jpeg"
-                  alt="Suzuki By Your Side"
-                  class="suzuki-logo"
-                />
-              </div>
-
-              <div class="company">
-                Autos Japoneses de Toluca SA de CV
-              </div>
-              <div class="dealer">
-                Suzuki Toluca
-              </div>
-              <div class="department">
-                Departamento: Refacciones
-              </div>
-            </div>
-
-            <div class="meta">
-              <div class="meta-row">
-                <strong>Fecha:</strong>
-                <span>${fecha}</span>
-              </div>
-
-              <div class="meta-row">
-                <strong>Folio:</strong>
-                <span>
-                  ${escapeHtml(
-                    cotizacionCreada.folio
-                  )}
-                </span>
-              </div>
-
-              <div class="meta-row">
-                <strong>Vigencia:</strong>
-                <span>15 días naturales</span>
-              </div>
-            </div>
-          </header>
-
-          <div class="document-title">
-            COTIZACIÓN
-          </div>
-
-          <section class="vehicle-grid">
-            <div class="field-line">
-              <div class="field-label">
-                Nombre del cliente:
-              </div>
-              <div class="field-value">
-                ${escapeHtml(
-                  cliente.nombre ||
-                    clienteNombre ||
-                    "—"
-                )}
-              </div>
-            </div>
-
-            <div class="field-line">
-              <div class="field-label">
-                Teléfono:
-              </div>
-              <div class="field-value">
-                ${escapeHtml(
-                  cliente.telefono ||
-                    clienteTelefono ||
-                    "—"
-                )}
-              </div>
-            </div>
-
-            <div class="field-line">
-              <div class="field-label">
-                Modelo Suzuki:
-              </div>
-              <div class="field-value">
-                ${escapeHtml(modelo || "—")}
-              </div>
-            </div>
-
-            <div class="field-line">
-              <div class="field-label">
-                Año:
-              </div>
-              <div class="field-value">
-                ${escapeHtml(anio || "—")}
-              </div>
-            </div>
-
-            <div class="field-line">
-              <div class="field-label">
-                VIN:
-              </div>
-              <div class="field-value">
-                ${escapeHtml(
-                  vin || "No proporcionado"
-                )}
-              </div>
-            </div>
-
-            <div class="field-line">
-              <div class="field-label">
-                Versión / Motor:
-              </div>
-              <div class="field-value">
-                ${escapeHtml(
-                  version || "—"
-                )}
-              </div>
-            </div>
-          </section>
-
-          <div class="section-title">
-            <span class="section-mark"></span>
-            <span>Refacciones</span>
-          </div>
-
-          <table class="parts-table">
-            <thead>
-              <tr>
-                <th>Cantidad</th>
-                <th>Descripción</th>
-                <th>No. parte</th>
-                <th class="money">
-                  Precio unitario
-                </th>
-                <th class="money">
-                  Precio total
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filas}
-            </tbody>
-          </table>
-
-          <div class="section-title">
-            <span class="section-mark"></span>
-            <span>Mano de obra</span>
-          </div>
-
-          <table class="labor-table">
-            <thead>
-              <tr>
-                <th>Descripción</th>
-                <th>Hrs</th>
-                <th>Tarifa</th>
-                <th>Mano de obra</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>
-                  ${escapeHtml(
-                    operacionInstalacion ||
-                      "Pendiente de validación por Servicio"
-                  )}
-                </td>
-                <td class="center">
-                  ${
-                    datosInstalacion.tiempoValido
-                      ? escapeHtml(
-                          tiempoInstalacion
-                        )
-                      : "—"
-                  }
-                </td>
-                <td class="money">
-                  ${escapeHtml(
-                    formatPrice(
-                      TARIFA_MANO_OBRA_MOSTRADOR
-                    )
-                  )} / h
-                </td>
-                <td class="money">
-                  ${
-                    datosInstalacion.tiempoValido
-                      ? escapeHtml(
-                          formatPrice(
-                            datosInstalacion.manoObra
-                          )
-                        )
-                      : "Pendiente"
-                  }
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div class="installation-note">
-            Tarifa especial de instalación para
-            clientes de mostrador: $550 por hora,
-            IVA incluido.
-            ${
-              fuenteTiempoInstalacion
-                ? `<br />Fuente del tiempo: ${escapeHtml(
-                    fuenteTiempoInstalacion
-                  )}.`
-                : ""
-            }
-          </div>
-
-          <div class="totals">
-            <div class="total-row">
-              <span>Total de refacciones</span>
-              <strong>
-                ${escapeHtml(
-                  formatPrice(
-                    cotizacionCreada.total
-                  )
-                )}
-              </strong>
-            </div>
-
-            <div class="total-row">
-              <span>Mano de obra</span>
-              <strong>
-                ${
-                  datosInstalacion.tiempoValido
-                    ? escapeHtml(
-                        formatPrice(
-                          datosInstalacion.manoObra
-                        )
-                      )
-                    : "Pendiente"
-                }
-              </strong>
-            </div>
-
-            ${
-              Number(
-                conceptosAdicionales || 0
-              ) > 0
-                ? `
-                  <div class="total-row">
-                    <span>
-                      Conceptos adicionales
-                    </span>
-                    <strong>
-                      ${escapeHtml(
-                        formatPrice(
-                          Number(
-                            conceptosAdicionales
-                          )
-                        )
-                      )}
-                    </strong>
-                  </div>
-                `
-                : ""
-            }
-
-            <div class="total-row grand-total">
-              <span>
-                ${
-                  datosInstalacion.tiempoValido
-                    ? "TOTAL INSTALADO"
-                    : "TOTAL REFACCIONES"
-                }
-              </span>
-              <strong>
-                ${escapeHtml(
-                  formatPrice(
-                    datosInstalacion.tiempoValido
-                      ? datosInstalacion.totalInstalado
-                      : cotizacionCreada.total
-                  )
-                )}
-              </strong>
-            </div>
-          </div>
-
-          <section class="conditions">
-            <h3>Condiciones</h3>
-            <ul>
-              <li>
-                Vigencia de la cotización:
-                15 días naturales.
-              </li>
-              <li>
-                Precios sujetos a cambio
-                sin previo aviso.
-              </li>
-              <li>
-                Disponibilidad sujeta al
-                inventario al momento del pedido.
-              </li>
-              <li>
-                La cotización no representa
-                una reserva de inventario.
-              </li>
-              <li>
-                El VIN es recomendado para
-                validar compatibilidad, pero
-                no es obligatorio para generar
-                la cotización.
-              </li>
-            </ul>
-          </section>
-
-          <div class="signatures">
-            <div class="signature">
-              Cliente
-            </div>
-            <div class="signature">
-              Asesor de refacciones
-            </div>
-          </div>
-
-          <div class="footer-note">
-            Cotización generada por Suzuki Parts
-            Vision AI — Suzuki Toluca.
-          </div>
-
-        </main>
-
-        <script>
-          window.onload = function () {
-            window.print();
-          };
-        </script>
-      </body>
-      </html>
-    `);
-
-    ventana.document.close();
+    imprimirCotizacionOficial({
+      ...cotizacionCreada,
+
+      nombreCliente:
+        cotizacionCreada.nombreCliente ||
+        cotizacionCreada.cliente?.nombre ||
+        clienteNombre,
+
+      telefonoCliente:
+        cotizacionCreada.telefonoCliente ||
+        cotizacionCreada.cliente?.telefono ||
+        clienteTelefono,
+
+      modeloVehiculo:
+        cotizacionCreada.modeloVehiculo ||
+        modeloVehiculo,
+
+      anioVehiculo:
+        cotizacionCreada.anioVehiculo ||
+        anioVehiculo,
+
+      versionVehiculo:
+        cotizacionCreada.versionVehiculo ||
+        versionVehiculo,
+
+      vinVehiculo:
+        cotizacionCreada.vinVehiculo ||
+        vinVehiculo,
+
+      operacionInstalacion:
+        cotizacionCreada.operacionInstalacion ||
+        operacionInstalacion,
+
+      tiempoInstalacion:
+        cotizacionCreada.tiempoInstalacion ||
+        tiempoInstalacion,
+
+      fuenteTiempo:
+        cotizacionCreada.fuenteTiempo ||
+        cotizacionCreada
+          .fuenteTiempoInstalacion ||
+        fuenteTiempoInstalacion,
+
+      conceptosAdicionales:
+        cotizacionCreada
+          .conceptosAdicionales ??
+        conceptosAdicionales,
+    });
   }
 
   // ==========================================

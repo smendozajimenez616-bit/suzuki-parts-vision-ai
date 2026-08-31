@@ -554,7 +554,6 @@ async function generarFolioCotizacion() {
     Number(ultima?.ultimo || 0) + 1
   );
 }
-
 // ==========================================
 // RUTAS GENERALES
 // ==========================================
@@ -564,7 +563,6 @@ app.get(
   (req, res) => {
     res.json({
       success: true,
-
       mensaje:
         "Servidor Suzuki Parts Vision AI funcionando",
     });
@@ -582,8 +580,7 @@ app.get(
 
       geminiConfigurado:
         Boolean(
-          process.env
-            .GEMINI_API_KEY
+          process.env.GEMINI_API_KEY
         ),
     });
   }
@@ -603,17 +600,12 @@ app.get(
       ORDER BY descripcion
       `,
       [],
-      (
-        error,
-        rows
-      ) => {
+      (error, rows) => {
         if (error) {
           return res
             .status(500)
             .json({
-              success:
-                false,
-
+              success: false,
               mensaje:
                 error.message,
             });
@@ -621,8 +613,7 @@ app.get(
 
         return res.json({
           success: true,
-          datos:
-            rows || [],
+          datos: rows || [],
         });
       }
     );
@@ -673,15 +664,12 @@ app.post(
       [
         numeroParte.trim(),
         descripcion.trim(),
-        modelo?.trim() ||
-          "",
-        anio?.trim() ||
-          "",
+        modelo?.trim() || "",
+        anio?.trim() || "",
         Number(
           existencias || 0
         ),
-        ubicacion?.trim() ||
-          "",
+        ubicacion?.trim() || "",
         Number(
           precio || 0
         ),
@@ -700,8 +688,7 @@ app.post(
           return res
             .status(500)
             .json({
-              success:
-                false,
+              success: false,
               mensaje,
             });
         }
@@ -711,8 +698,7 @@ app.post(
           .json({
             success: true,
 
-            id:
-              this.lastID,
+            id: this.lastID,
 
             mensaje:
               "Refacción agregada correctamente.",
@@ -732,8 +718,7 @@ app.get(
     try {
       const buscar =
         String(
-          req.query.buscar ||
-            ""
+          req.query.buscar || ""
         ).trim();
 
       let sql = `
@@ -805,14 +790,12 @@ app.post(
     try {
       const nombre =
         String(
-          req.body?.nombre ||
-            ""
+          req.body?.nombre || ""
         ).trim();
 
       const telefono =
         limpiarTelefono(
-          req.body
-            ?.telefono
+          req.body?.telefono
         );
 
       if (
@@ -822,8 +805,7 @@ app.post(
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
               "El nombre y el teléfono son obligatorios.",
@@ -878,46 +860,153 @@ app.post(
     try {
       const nombreCliente =
         String(
-          req.body
-            ?.nombreCliente ||
+          req.body?.nombreCliente ||
             ""
         ).trim();
 
       const telefonoCliente =
         limpiarTelefono(
-          req.body
-            ?.telefonoCliente
+          req.body?.telefonoCliente
         );
-const modeloVehiculo =
-  String(
-    req.body?.modeloVehiculo ||
-      ""
-  ).trim();
 
-const anioVehiculo =
-  String(
-    req.body?.anioVehiculo ||
-      ""
-  ).trim();
+      const modeloVehiculo =
+        String(
+          req.body?.modeloVehiculo ||
+            ""
+        ).trim();
 
-const versionVehiculo =
-  String(
-    req.body?.versionVehiculo ||
-      ""
-  ).trim();
-  const interesaTomaCuenta =
-  req.body?.interesaTomaCuenta === true ||
-  req.body?.interesaTomaCuenta === 1 ||
-  req.body?.interesaTomaCuenta === "1" ||
-  req.body?.interesaTomaCuenta === "Si" ||
-  req.body?.interesaTomaCuenta === "Sí";
+      const anioVehiculo =
+        String(
+          req.body?.anioVehiculo ||
+            ""
+        ).trim();
 
-const interesaPromociones =
-  req.body?.interesaPromociones === true ||
-  req.body?.interesaPromociones === 1 ||
-  req.body?.interesaPromociones === "1" ||
-  req.body?.interesaPromociones === "Si" ||
-  req.body?.interesaPromociones === "Sí";
+      const versionVehiculo =
+        String(
+          req.body?.versionVehiculo ||
+            ""
+        ).trim();
+
+      // ======================================
+      // VIN
+      // ======================================
+
+      const vinVehiculo =
+        String(
+          req.body?.vinVehiculo ||
+            ""
+        )
+          .trim()
+          .toUpperCase();
+
+      // ======================================
+      // INSTALACIÓN
+      // ======================================
+
+      const operacionInstalacion =
+        String(
+          req.body
+            ?.operacionInstalacion ||
+            ""
+        ).trim();
+
+      const tiempoInstalacionNumero =
+        Number(
+          req.body
+            ?.tiempoInstalacion ||
+            0
+        );
+
+      const tiempoInstalacion =
+        Number.isFinite(
+          tiempoInstalacionNumero
+        ) &&
+        tiempoInstalacionNumero > 0
+          ? tiempoInstalacionNumero
+          : 0;
+
+      const fuenteTiempo =
+        String(
+          req.body?.fuenteTiempo ||
+            req.body
+              ?.fuenteTiempoInstalacion ||
+            ""
+        ).trim();
+
+      // Guardamos conceptos adicionales
+      // como JSON para poder recuperarlos
+      // después exactamente desde Historial.
+      let conceptosAdicionales = "";
+
+      const conceptosRecibidos =
+        req.body
+          ?.conceptosAdicionales;
+
+      if (
+        Array.isArray(
+          conceptosRecibidos
+        ) ||
+        (
+          conceptosRecibidos &&
+          typeof conceptosRecibidos ===
+            "object"
+        )
+      ) {
+        try {
+          conceptosAdicionales =
+            JSON.stringify(
+              conceptosRecibidos
+            );
+        } catch (error) {
+          conceptosAdicionales =
+            "";
+        }
+      } else {
+        conceptosAdicionales =
+          String(
+            conceptosRecibidos ??
+              ""
+          ).trim();
+      }
+
+      // ======================================
+      // INTERÉS COMERCIAL
+      // ======================================
+
+      const interesaTomaCuenta =
+        req.body
+          ?.interesaTomaCuenta ===
+          true ||
+        req.body
+          ?.interesaTomaCuenta ===
+          1 ||
+        req.body
+          ?.interesaTomaCuenta ===
+          "1" ||
+        req.body
+          ?.interesaTomaCuenta ===
+          "Si" ||
+        req.body
+          ?.interesaTomaCuenta ===
+          "Sí";
+
+      const interesaPromociones =
+        req.body
+          ?.interesaPromociones ===
+          true ||
+        req.body
+          ?.interesaPromociones ===
+          1 ||
+        req.body
+          ?.interesaPromociones ===
+          "1" ||
+        req.body
+          ?.interesaPromociones ===
+          "Si" ||
+        req.body
+          ?.interesaPromociones ===
+          "Sí";
+
       const items =
         Array.isArray(
           req.body?.items
@@ -932,6 +1021,10 @@ const interesaPromociones =
             ""
         ).trim();
 
+      // ======================================
+      // VALIDACIONES
+      // ======================================
+
       if (
         !nombreCliente ||
         !telefonoCliente
@@ -939,8 +1032,7 @@ const interesaPromociones =
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
               "El nombre y el teléfono del cliente son obligatorios.",
@@ -953,13 +1045,16 @@ const interesaPromociones =
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
               "La cotización debe incluir al menos una refacción.",
           });
       }
+
+      // ======================================
+      // NORMALIZAR REFACCIONES
+      // ======================================
 
       const itemsNormalizados =
         items.map(
@@ -1022,13 +1117,16 @@ const interesaPromociones =
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
               "Todas las refacciones deben tener número de parte.",
           });
       }
+
+      // ======================================
+      // TOTALES DE REFACCIONES
+      // ======================================
 
       const subtotal =
         itemsNormalizados.reduce(
@@ -1041,11 +1139,29 @@ const interesaPromociones =
           0
         );
 
+      /*
+       * IMPORTANTE:
+       *
+       * total continúa representando
+       * el total de REFACCIONES.
+       *
+       * No cambiamos esta lógica porque
+       * actualmente Reportes e Historial
+       * utilizan este valor.
+       *
+       * La mano de obra se calcula para
+       * la cotización impresa usando
+       * tiempoInstalacion × $550.
+       */
       const total =
         subtotal;
 
       const folio =
-  await generarFolioCotizacion();
+        await generarFolioCotizacion();
+
+      // ======================================
+      // INICIAR TRANSACCIÓN
+      // ======================================
 
       await dbRun(
         "BEGIN TRANSACTION"
@@ -1060,42 +1176,76 @@ const interesaPromociones =
           telefonoCliente
         );
 
+      // ======================================
+      // GUARDAR COTIZACIÓN
+      // ======================================
+
       const resultadoCotizacion =
-  await dbRun(
-    `
-      INSERT INTO cotizaciones
-      (
-        folio,
-        clienteId,
-        estado,
-        subtotal,
-        total,
-        observaciones,
-        modeloVehiculo,
-        anioVehiculo,
-        versionVehiculo,
-        interesaTomaCuenta,
-        interesaPromociones
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    [
-      folio,
-      cliente.id,
-      "Pendiente",
-      subtotal,
-      total,
-      observaciones,
-      modeloVehiculo,
-      anioVehiculo,
-      versionVehiculo,
-      interesaTomaCuenta ? 1 : 0,
-      interesaPromociones ? 1 : 0,
-    ]
-  );
+        await dbRun(
+          `
+          INSERT INTO cotizaciones
+          (
+            folio,
+            clienteId,
+            estado,
+            subtotal,
+            total,
+            observaciones,
+
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            vinVehiculo,
+
+            operacionInstalacion,
+            tiempoInstalacion,
+            fuenteTiempo,
+            conceptosAdicionales,
+
+            interesaTomaCuenta,
+            interesaPromociones
+          )
+          VALUES (
+            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?, ?, ?,
+            ?, ?
+          )
+          `,
+          [
+            folio,
+            cliente.id,
+            "Pendiente",
+            subtotal,
+            total,
+            observaciones,
+
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            vinVehiculo,
+
+            operacionInstalacion,
+            tiempoInstalacion,
+            fuenteTiempo,
+            conceptosAdicionales,
+
+            interesaTomaCuenta
+              ? 1
+              : 0,
+
+            interesaPromociones
+              ? 1
+              : 0,
+          ]
+        );
 
       const cotizacionId =
         resultadoCotizacion.lastID;
+
+      // ======================================
+      // DETALLE + HISTORIAL PERMANENTE
+      // ======================================
 
       for (
         const item of
@@ -1123,10 +1273,6 @@ const interesaPromociones =
             item.subtotal,
           ]
         );
-
-        // ==================================
-        // HISTORIAL PERMANENTE
-        // ==================================
 
         await dbRun(
           `
@@ -1162,31 +1308,33 @@ const interesaPromociones =
         );
       }
 
-      // ==========================================
+      // ======================================
       // REFERIDO A SEMINUEVOS
-      // ==========================================
+      // ======================================
 
-      if (interesaTomaCuenta) {
+      if (
+        interesaTomaCuenta
+      ) {
         const mensajeSeminuevos =
           "Cliente interesado en conocer cuánto se le puede ofrecer por su vehículo como toma a cuenta.";
 
         await dbRun(
           `
-            INSERT OR IGNORE INTO referidos_comerciales
-            (
-              area,
-              cotizacionId,
-              folioCotizacion,
-              clienteId,
-              nombreCliente,
-              telefonoCliente,
-              modeloVehiculo,
-              anioVehiculo,
-              versionVehiculo,
-              mensaje,
-              estadoSeguimiento
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT OR IGNORE INTO referidos_comerciales
+          (
+            area,
+            cotizacionId,
+            folioCotizacion,
+            clienteId,
+            nombreCliente,
+            telefonoCliente,
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            mensaje,
+            estadoSeguimiento
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             "Seminuevos",
@@ -1204,31 +1352,33 @@ const interesaPromociones =
         );
       }
 
-      // ==========================================
+      // ======================================
       // REFERIDO A VENTAS
-      // ==========================================
+      // ======================================
 
-      if (interesaPromociones) {
+      if (
+        interesaPromociones
+      ) {
         const mensajeVentas =
           "Cliente interesado en recibir información y promociones comerciales de autos nuevos.";
 
         await dbRun(
           `
-            INSERT OR IGNORE INTO referidos_comerciales
-            (
-              area,
-              cotizacionId,
-              folioCotizacion,
-              clienteId,
-              nombreCliente,
-              telefonoCliente,
-              modeloVehiculo,
-              anioVehiculo,
-              versionVehiculo,
-              mensaje,
-              estadoSeguimiento
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT OR IGNORE INTO referidos_comerciales
+          (
+            area,
+            cotizacionId,
+            folioCotizacion,
+            clienteId,
+            nombreCliente,
+            telefonoCliente,
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            mensaje,
+            estadoSeguimiento
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `,
           [
             "Ventas",
@@ -1246,12 +1396,20 @@ const interesaPromociones =
         );
       }
 
+      // ======================================
+      // CONFIRMAR TRANSACCIÓN
+      // ======================================
+
       await dbRun(
         "COMMIT"
       );
 
       transactionStarted =
         false;
+
+      // ======================================
+      // RESPUESTA AL FRONTEND
+      // ======================================
 
       return res
         .status(201)
@@ -1261,35 +1419,55 @@ const interesaPromociones =
           mensaje:
             "Cotización creada correctamente.",
 
-         cotizacion: {
-  id:
-    cotizacionId,
+          cotizacion: {
+            id:
+              cotizacionId,
 
-  folio,
+            folio,
 
-  cliente,
+            cliente,
 
-  estado:
-    "Pendiente",
+            estado:
+              "Pendiente",
 
-  subtotal,
+            subtotal,
 
-  total,
+            total,
 
-  observaciones,
+            observaciones,
 
-  modeloVehiculo,
-  anioVehiculo,
-  versionVehiculo,
+            modeloVehiculo,
+            anioVehiculo,
+            versionVehiculo,
+            vinVehiculo,
 
-  interesaTomaCuenta,
-  interesaPromociones,
+            operacionInstalacion,
+            tiempoInstalacion,
+            fuenteTiempo,
 
-  items:
-    itemsNormalizados,
+            /*
+             * Aquí regresamos el valor
+             * original para que App.jsx
+             * pueda seguir utilizándolo
+             * inmediatamente sin tener
+             * que convertir el JSON.
+             */
+            conceptosAdicionales:
+              conceptosRecibidos ??
+              "",
+
+            interesaTomaCuenta,
+            interesaPromociones,
+
+            items:
+              itemsNormalizados,
           },
         });
     } catch (error) {
+      // ======================================
+      // REVERTIR SI ALGO FALLA
+      // ======================================
+
       if (
         transactionStarted
       ) {
@@ -1324,7 +1502,6 @@ const interesaPromociones =
     }
   }
 );
-
 // ==========================================
 // LISTAR COTIZACIONES
 // ==========================================
@@ -1333,51 +1510,170 @@ app.get(
   "/api/cotizaciones",
   async (req, res) => {
     try {
-      const rows =
-        await dbAll(`
-          SELECT
-  c.id,
-  c.folio,
-  c.fecha,
-  c.estado,
-  c.subtotal,
-  c.total,
- c.observaciones,
-c.motivoRechazo,
-c.detalleMotivoRechazo,
-c.modeloVehiculo,
-c.anioVehiculo,
-c.versionVehiculo,
-c.interesaTomaCuenta,
-c.interesaPromociones,
+      const buscar =
+        String(
+          req.query?.buscar || ""
+        ).trim();
 
-            cl.id
-              AS clienteId,
+      const estado =
+        String(
+          req.query?.estado || ""
+        ).trim();
 
-            cl.nombre
-              AS nombreCliente,
+      let sql = `
+        SELECT
+          c.id,
+          c.folio,
+          c.fecha,
+          c.estado,
+          c.subtotal,
+          c.total,
+          c.observaciones,
 
-            cl.telefono
-              AS telefonoCliente
+          c.motivoRechazo,
+          c.detalleMotivoRechazo,
 
-          FROM cotizaciones c
+          c.modeloVehiculo,
+          c.anioVehiculo,
+          c.versionVehiculo,
+          c.vinVehiculo,
 
-          INNER JOIN clientes cl
-            ON cl.id =
-            c.clienteId
+          c.operacionInstalacion,
+          c.tiempoInstalacion,
+          c.fuenteTiempo,
+          c.conceptosAdicionales,
 
-          ORDER BY
-            c.fecha DESC,
-            c.id DESC
-        `);
+          c.interesaTomaCuenta,
+          c.interesaPromociones,
+
+          cl.id AS clienteId,
+          cl.nombre AS nombreCliente,
+          cl.telefono AS telefonoCliente
+
+        FROM cotizaciones c
+
+        INNER JOIN clientes cl
+          ON cl.id = c.clienteId
+
+        WHERE 1 = 1
+      `;
+
+      const params = [];
+
+      if (buscar) {
+        const patron =
+          `%${buscar}%`;
+
+        sql += `
+          AND (
+            c.folio LIKE ?
+            OR cl.nombre LIKE ?
+            OR cl.telefono LIKE ?
+            OR c.modeloVehiculo LIKE ?
+            OR c.anioVehiculo LIKE ?
+            OR c.versionVehiculo LIKE ?
+            OR c.vinVehiculo LIKE ?
+          )
+        `;
+
+        params.push(
+          patron,
+          patron,
+          patron,
+          patron,
+          patron,
+          patron,
+          patron
+        );
+      }
+
+      if (estado) {
+        sql += `
+          AND c.estado = ?
+        `;
+
+        params.push(
+          estado
+        );
+      }
+
+      sql += `
+        ORDER BY
+          datetime(c.fecha) DESC,
+          c.id DESC
+      `;
+
+      const cotizaciones =
+        await dbAll(
+          sql,
+          params
+        );
+
+      const datos =
+        cotizaciones.map(
+          (cotizacion) => {
+            let conceptosAdicionales =
+              [];
+
+            if (
+              cotizacion
+                .conceptosAdicionales
+            ) {
+              try {
+                const parsed =
+                  JSON.parse(
+                    cotizacion
+                      .conceptosAdicionales
+                  );
+
+                conceptosAdicionales =
+                  Array.isArray(
+                    parsed
+                  )
+                    ? parsed
+                    : parsed
+                      ? [parsed]
+                      : [];
+              } catch (error) {
+                conceptosAdicionales =
+                  [];
+              }
+            }
+
+            return {
+              ...cotizacion,
+
+              tiempoInstalacion:
+                Number(
+                  cotizacion
+                    .tiempoInstalacion ||
+                    0
+                ),
+
+              conceptosAdicionales,
+
+              interesaTomaCuenta:
+                Boolean(
+                  cotizacion
+                    .interesaTomaCuenta
+                ),
+
+              interesaPromociones:
+                Boolean(
+                  cotizacion
+                    .interesaPromociones
+                ),
+            };
+          }
+        );
 
       return res.json({
         success: true,
-        datos: rows,
+        datos,
       });
     } catch (error) {
       console.error(
-        "Error al consultar cotizaciones:",
+        "Error al listar cotizaciones:",
         error
       );
 
@@ -1395,7 +1691,7 @@ c.interesaPromociones,
 );
 
 // ==========================================
-// CONSULTAR UNA COTIZACIÓN
+// VER UNA COTIZACIÓN
 // ==========================================
 
 app.get(
@@ -1414,49 +1710,53 @@ app.get(
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
-              "Identificador de cotización inválido.",
+              "El ID de la cotización no es válido.",
           });
       }
 
       const cotizacion =
         await dbGet(
           `
-         SELECT
-  c.id,
-  c.folio,
-  c.fecha,
-  c.estado,
-  c.subtotal,
-  c.total,
- c.observaciones,
-c.motivoRechazo,
-c.detalleMotivoRechazo,
-c.modeloVehiculo,
-c.anioVehiculo,
-c.versionVehiculo,
-c.interesaTomaCuenta,
-c.interesaPromociones,
+          SELECT
+            c.id,
+            c.folio,
+            c.fecha,
+            c.estado,
+            c.subtotal,
+            c.total,
+            c.observaciones,
 
-            cl.id
-              AS clienteId,
+            c.motivoRechazo,
+            c.detalleMotivoRechazo,
 
-            cl.nombre
-              AS nombreCliente,
+            c.modeloVehiculo,
+            c.anioVehiculo,
+            c.versionVehiculo,
+            c.vinVehiculo,
 
-            cl.telefono
-              AS telefonoCliente
+            c.operacionInstalacion,
+            c.tiempoInstalacion,
+            c.fuenteTiempo,
+            c.conceptosAdicionales,
+
+            c.interesaTomaCuenta,
+            c.interesaPromociones,
+
+            cl.id AS clienteId,
+            cl.nombre AS nombreCliente,
+            cl.telefono AS telefonoCliente
 
           FROM cotizaciones c
 
           INNER JOIN clientes cl
-            ON cl.id =
-            c.clienteId
+            ON cl.id = c.clienteId
 
           WHERE c.id = ?
+
+          LIMIT 1
           `,
           [id]
         );
@@ -1465,8 +1765,7 @@ c.interesaPromociones,
         return res
           .status(404)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
               "No se encontró la cotización.",
@@ -1488,18 +1787,85 @@ c.interesaPromociones,
 
           WHERE cotizacionId = ?
 
-          ORDER BY id
+          ORDER BY id ASC
           `,
           [id]
         );
 
+      // ======================================
+      // RECUPERAR CONCEPTOS ADICIONALES
+      // ======================================
+
+      let conceptosAdicionales =
+        [];
+
+      if (
+        cotizacion
+          .conceptosAdicionales
+      ) {
+        try {
+          const parsed =
+            JSON.parse(
+              cotizacion
+                .conceptosAdicionales
+            );
+
+          conceptosAdicionales =
+            Array.isArray(
+              parsed
+            )
+              ? parsed
+              : parsed
+                ? [parsed]
+                : [];
+        } catch (error) {
+          /*
+           * Registros antiguos pueden
+           * contener texto normal en lugar
+           * de JSON. No inventamos datos.
+           */
+          conceptosAdicionales =
+            [];
+        }
+      }
+
+      const resultado = {
+        ...cotizacion,
+
+        tiempoInstalacion:
+          Number(
+            cotizacion
+              .tiempoInstalacion ||
+              0
+          ),
+
+        conceptosAdicionales,
+
+        interesaTomaCuenta:
+          Boolean(
+            cotizacion
+              .interesaTomaCuenta
+          ),
+
+        interesaPromociones:
+          Boolean(
+            cotizacion
+              .interesaPromociones
+          ),
+
+        items,
+      };
+
       return res.json({
         success: true,
+        cotizacion:
+          resultado,
 
-        cotizacion: {
-          ...cotizacion,
-          items,
-        },
+        // Conservamos "datos" también
+        // para compatibilidad con código
+        // que pudiera estar utilizándolo.
+        datos:
+          resultado,
       });
     } catch (error) {
       console.error(
@@ -1521,7 +1887,7 @@ c.interesaPromociones,
 );
 
 // ==========================================
-// CAMBIAR ESTADO DE COTIZACIÓN
+// ACTUALIZAR ESTADO DE COTIZACIÓN
 // ==========================================
 
 app.patch(
@@ -1538,29 +1904,30 @@ app.patch(
 
       const estado =
         String(
-          req.body?.estado ||
+          req.body?.estado || ""
+        ).trim();
+
+      const motivoRechazo =
+        String(
+          req.body
+            ?.motivoRechazo ||
             ""
         ).trim();
-        const motivoRechazo =
-  String(
-    req.body?.motivoRechazo ||
-      ""
-  ).trim();
 
-const detalleMotivoRechazo =
-  String(
-    req.body?.detalleMotivoRechazo ||
-      ""
-  ).trim();
+      const detalleMotivoRechazo =
+        String(
+          req.body
+            ?.detalleMotivoRechazo ||
+            ""
+        ).trim();
 
-      const estadosPermitidos =
-        [
-          "Pendiente",
-          "Enviada",
-          "Aceptada",
-          "Rechazada",
-          "Vencida",
-        ];
+      const estadosPermitidos = [
+        "Pendiente",
+        "Enviada",
+        "Aceptada",
+        "Rechazada",
+        "Vencida",
+      ];
 
       if (
         !Number.isInteger(id) ||
@@ -1569,11 +1936,10 @@ const detalleMotivoRechazo =
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
-              "Identificador de cotización inválido.",
+              "El ID de la cotización no es válido.",
           });
       }
 
@@ -1585,11 +1951,50 @@ const detalleMotivoRechazo =
         return res
           .status(400)
           .json({
-            success:
-              false,
+            success: false,
 
             mensaje:
-              "Estado de cotización inválido.",
+              "El estado seleccionado no es válido.",
+          });
+      }
+
+      if (
+        estado ===
+          "Rechazada" &&
+        !motivoRechazo
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            mensaje:
+              "Selecciona el motivo por el que se rechazó la cotización.",
+          });
+      }
+
+      const existente =
+        await dbGet(
+          `
+          SELECT
+            id,
+            folio,
+            estado
+          FROM cotizaciones
+          WHERE id = ?
+          LIMIT 1
+          `,
+          [id]
+        );
+
+      if (!existente) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+
+            mensaje:
+              "No se encontró la cotización.",
           });
       }
 
@@ -1600,52 +2005,42 @@ const detalleMotivoRechazo =
       transactionStarted =
         true;
 
-    const resultado =
-  await dbRun(
-    `
-      UPDATE cotizaciones
-      SET
-        estado = ?,
-        motivoRechazo = ?,
-        detalleMotivoRechazo = ?
-      WHERE id = ?
-    `,
-    [
-      estado,
-      estado === "Rechazada"
-        ? motivoRechazo
-        : "",
-      estado === "Rechazada"
-        ? detalleMotivoRechazo
-        : "",
-      id,
-    ]
-  );
-
       if (
-        resultado.changes ===
-        0
+        estado ===
+        "Rechazada"
       ) {
         await dbRun(
-          "ROLLBACK"
+          `
+          UPDATE cotizaciones
+          SET
+            estado = ?,
+            motivoRechazo = ?,
+            detalleMotivoRechazo = ?
+          WHERE id = ?
+          `,
+          [
+            estado,
+            motivoRechazo,
+            detalleMotivoRechazo,
+            id,
+          ]
         );
-
-        transactionStarted =
-          false;
-
-        return res
-          .status(404)
-          .json({
-            success:
-              false,
-
-            mensaje:
-              "No se encontró la cotización.",
-          });
+      } else {
+        await dbRun(
+          `
+          UPDATE cotizaciones
+          SET
+            estado = ?,
+            motivoRechazo = '',
+            detalleMotivoRechazo = ''
+          WHERE id = ?
+          `,
+          [
+            estado,
+            id,
+          ]
+        );
       }
-
-      // El historial NO se elimina.
-      // Solo cambia el estado.
 
       await dbRun(
         `
@@ -1666,24 +2061,31 @@ const detalleMotivoRechazo =
       transactionStarted =
         false;
 
+      const actualizada =
+        await dbGet(
+          `
+          SELECT
+            id,
+            folio,
+            estado,
+            motivoRechazo,
+            detalleMotivoRechazo
+          FROM cotizaciones
+          WHERE id = ?
+          LIMIT 1
+          `,
+          [id]
+        );
+
       return res.json({
-  success: true,
+        success: true,
 
-  mensaje:
-    "Estado actualizado correctamente.",
+        mensaje:
+          "Estado actualizado correctamente.",
 
-  estado,
-
-  motivoRechazo:
-    estado === "Rechazada"
-      ? motivoRechazo
-      : "",
-
-  detalleMotivoRechazo:
-    estado === "Rechazada"
-      ? detalleMotivoRechazo
-      : "",
-});
+        cotizacion:
+          actualizada,
+      });
     } catch (error) {
       if (
         transactionStarted
@@ -1730,65 +2132,67 @@ app.get(
     try {
       const buscar =
         String(
-          req.query.buscar || ""
+          req.query?.buscar ||
+            ""
         ).trim();
 
-      const paginaSolicitada =
-        Number(
-          req.query.pagina || 1
-        );
+      let sql = `
+        SELECT
+          h.id,
+          h.fecha,
 
-      const limiteSolicitado =
-        Number(
-          req.query.limite || 50
-        );
+          h.clienteId,
+          h.nombreCliente,
+          h.telefonoCliente,
 
-      const pagina =
-        Number.isInteger(
-          paginaSolicitada
-        ) &&
-        paginaSolicitada > 0
-          ? paginaSolicitada
-          : 1;
+          h.cotizacionId,
+          h.folioCotizacion,
 
-      const limite =
-        Number.isInteger(
-          limiteSolicitado
-        ) &&
-        limiteSolicitado > 0
-          ? Math.min(
-              limiteSolicitado,
-              200
-            )
-          : 50;
+          h.numeroParte,
+          h.descripcion,
+          h.cantidad,
+          h.precioUnitario,
+          h.subtotal,
+          h.estado,
 
-      const offset =
-        (pagina - 1) * limite;
+          c.modeloVehiculo,
+          c.anioVehiculo,
+          c.versionVehiculo,
+          c.vinVehiculo,
 
-      let whereSql = "";
+          c.operacionInstalacion,
+          c.tiempoInstalacion,
+          c.fuenteTiempo,
+          c.conceptosAdicionales
+
+        FROM historial_pedidos h
+
+        LEFT JOIN cotizaciones c
+          ON c.id =
+            h.cotizacionId
+
+        WHERE 1 = 1
+      `;
 
       const params = [];
 
       if (buscar) {
-        whereSql = `
-          WHERE
+        const patron =
+          `%${buscar}%`;
+
+        sql += `
+          AND (
             h.nombreCliente LIKE ?
             OR h.telefonoCliente LIKE ?
             OR h.numeroParte LIKE ?
             OR h.descripcion LIKE ?
             OR h.folioCotizacion LIKE ?
-            OR h.estado LIKE ?
             OR c.modeloVehiculo LIKE ?
-            OR c.anioVehiculo LIKE ?
-            OR c.versionVehiculo LIKE ?
+            OR c.vinVehiculo LIKE ?
+          )
         `;
 
-        const patron =
-          `%${buscar}%`;
-
         params.push(
-          patron,
-          patron,
           patron,
           patron,
           patron,
@@ -1799,115 +2203,67 @@ app.get(
         );
       }
 
-      // ======================================
-      // CONTAR REGISTROS
-      // ======================================
+      sql += `
+        ORDER BY
+          datetime(h.fecha) DESC,
+          h.id DESC
+      `;
 
-      const totalRow =
-        await dbGet(
-          `
-            SELECT
-              COUNT(*) AS total
-
-            FROM historial_pedidos h
-
-            LEFT JOIN cotizaciones c
-              ON c.id = h.cotizacionId
-
-            ${whereSql}
-          `,
+      const historial =
+        await dbAll(
+          sql,
           params
         );
 
-      const total =
-        Number(
-          totalRow?.total || 0
-        );
-
-      // ======================================
-      // OBTENER HISTORIAL
-      // ======================================
-
       const datos =
-        await dbAll(
-          `
-            SELECT
-              h.id,
-              h.fecha,
-              h.clienteId,
-              h.nombreCliente,
-              h.telefonoCliente,
-              h.cotizacionId,
-              h.folioCotizacion,
-              h.numeroParte,
-              h.descripcion,
-              h.cantidad,
-              h.precioUnitario,
-              h.subtotal,
-              h.estado,
+        historial.map(
+          (registro) => {
+            let conceptosAdicionales =
+              [];
 
-              COALESCE(
-                c.modeloVehiculo,
-                ''
-              ) AS modeloVehiculo,
+            if (
+              registro
+                .conceptosAdicionales
+            ) {
+              try {
+                const parsed =
+                  JSON.parse(
+                    registro
+                      .conceptosAdicionales
+                  );
 
-              COALESCE(
-                c.anioVehiculo,
-                ''
-              ) AS anioVehiculo,
+                conceptosAdicionales =
+                  Array.isArray(
+                    parsed
+                  )
+                    ? parsed
+                    : parsed
+                      ? [parsed]
+                      : [];
+              } catch (error) {
+                conceptosAdicionales =
+                  [];
+              }
+            }
 
-              COALESCE(
-                c.versionVehiculo,
-                ''
-              ) AS versionVehiculo
+            return {
+              ...registro,
 
-            FROM historial_pedidos h
+              tiempoInstalacion:
+                Number(
+                  registro
+                    .tiempoInstalacion ||
+                    0
+                ),
 
-            LEFT JOIN cotizaciones c
-              ON c.id = h.cotizacionId
-
-            ${whereSql}
-
-            ORDER BY
-              h.fecha DESC,
-              h.id DESC
-
-            LIMIT ?
-            OFFSET ?
-          `,
-          [
-            ...params,
-            limite,
-            offset,
-          ]
-        );
-
-      const totalPaginas =
-        Math.max(
-          1,
-          Math.ceil(
-            total / limite
-          )
+              conceptosAdicionales,
+            };
+          }
         );
 
       return res.json({
         success: true,
-
         datos,
-
-        paginacion: {
-          pagina,
-          limite,
-          total,
-          totalPaginas,
-
-          tieneAnterior:
-            pagina > 1,
-
-          tieneSiguiente:
-            pagina <
-            totalPaginas,
-        },
       });
     } catch (error) {
       console.error(
@@ -1927,7 +2283,6 @@ app.get(
     }
   }
 );
-
 // ==========================================
 // REFERIDOS COMERCIALES
 // ==========================================
@@ -1969,7 +2324,8 @@ app.get(
           )
         `);
 
-        const patron = `%${buscar}%`;
+        const patron =
+          `%${buscar}%`;
 
         params.push(
           patron,
@@ -1983,7 +2339,9 @@ app.get(
 
       const whereSql =
         condiciones.length > 0
-          ? `WHERE ${condiciones.join(" AND ")}`
+          ? `WHERE ${condiciones.join(
+              " AND "
+            )}`
           : "";
 
       const datos =
@@ -2029,6 +2387,7 @@ app.get(
         .status(500)
         .json({
           success: false,
+
           mensaje:
             error.message ||
             "No se pudieron consultar los referidos.",
@@ -2036,6 +2395,7 @@ app.get(
     }
   }
 );
+
 // ==========================================
 // ACTUALIZAR SEGUIMIENTO DE REFERIDO
 // ==========================================
@@ -2051,7 +2411,8 @@ app.patch(
 
       const estadoSeguimiento =
         String(
-          req.body?.estadoSeguimiento ||
+          req.body
+            ?.estadoSeguimiento ||
             ""
         ).trim();
 
