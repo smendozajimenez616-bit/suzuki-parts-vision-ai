@@ -86,6 +86,35 @@ function App() {
     setCantidadCotizacion,
   ] = useState(1);
 
+  // ==========================================
+  // VALIDACIÓN DEL NÚMERO DE PARTE
+  // ==========================================
+
+  const [
+    numeroParteCorrecto,
+    setNumeroParteCorrecto,
+  ] = useState("");
+
+  const [
+    numeroParteManual,
+    setNumeroParteManual,
+  ] = useState("");
+
+  const [
+    descripcionParteManual,
+    setDescripcionParteManual,
+  ] = useState("");
+
+  const [
+    cantidadParteManual,
+    setCantidadParteManual,
+  ] = useState(1);
+
+  const [
+    precioParteManual,
+    setPrecioParteManual,
+  ] = useState("");
+
   const [
     vinVehiculo,
     setVinVehiculo,
@@ -132,6 +161,15 @@ function App() {
     cotizacionCreada,
     setCotizacionCreada,
   ] = useState(null);
+
+  // ==========================================
+  // REFACCIONES PARA LA COTIZACIÓN
+  // ==========================================
+
+  const [
+    itemsCotizacion,
+    setItemsCotizacion,
+  ] = useState([]);
 
   // ==========================================
   // INTERÉS COMERCIAL
@@ -264,24 +302,26 @@ function App() {
 
     setResult(null);
 
-    setClienteNombre("");
-    setClienteTelefono("");
+    if (itemsCotizacion.length === 0) {
+      setClienteNombre("");
+      setClienteTelefono("");
 
-    setModeloVehiculo("");
-    setAnioVehiculo("");
-    setVersionVehiculo("");
+      setModeloVehiculo("");
+      setAnioVehiculo("");
+      setVersionVehiculo("");
+
+      setVinVehiculo("");
+      setOperacionInstalacion("");
+      setTiempoInstalacion("");
+      setFuenteTiempoInstalacion("");
+      setConceptosAdicionales("");
+
+      // Limpiar las dos preguntas
+      setInteresaTomaCuenta("");
+      setInteresaPromociones("");
+    }
 
     setCantidadCotizacion(1);
-
-    setVinVehiculo("");
-    setOperacionInstalacion("");
-    setTiempoInstalacion("");
-    setFuenteTiempoInstalacion("");
-    setConceptosAdicionales("");
-
-    // Limpiar las dos preguntas
-    setInteresaTomaCuenta("");
-    setInteresaPromociones("");
 
     setCotizacionError("");
     setCotizacionCreada(null);
@@ -310,6 +350,12 @@ function App() {
     setCotizacionError("");
     setCotizacionCreada(null);
     setErrorMessage("");
+
+    setNumeroParteCorrecto("");
+    setNumeroParteManual("");
+    setDescripcionParteManual("");
+    setCantidadParteManual(1);
+    setPrecioParteManual("");
 
     try {
       const data =
@@ -435,43 +481,198 @@ function App() {
   }
 
   // ==========================================
+  // REFACCIONES PARA COTIZAR
+  // ==========================================
+
+  function obtenerPiezaActualParaCotizacion() {
+    if (!result?.inventory) {
+      return null;
+    }
+
+    const esManual =
+      numeroParteCorrecto === "No";
+
+    const numeroParte = esManual
+      ? numeroParteManual.trim()
+      : String(
+          result.inventory.numeroParte ||
+            ""
+        ).trim();
+
+    const descripcion =
+      descripcionParteManual.trim() ||
+      String(
+        result.inventory.descripcion ||
+          result.description ||
+          ""
+      ).trim();
+
+    const cantidad = Math.max(
+      1,
+      Number(
+        esManual
+          ? cantidadParteManual
+          : cantidadCotizacion
+      ) || 1
+    );
+
+    const precioUnitario =
+      Number(precioParteManual || 0) ||
+      Number(result.inventory.precio || 0);
+
+    if (
+      !numeroParte ||
+      !descripcion ||
+      !Number.isFinite(precioUnitario) ||
+      precioUnitario <= 0
+    ) {
+      return null;
+    }
+
+    return {
+      numeroParte,
+      descripcion,
+      cantidad,
+      precioUnitario,
+      subtotal:
+        cantidad * precioUnitario,
+    };
+  }
+
+  function handleAgregarPiezaCotizacion() {
+    if (!result?.inventory) {
+      setCotizacionError(
+        "Primero identifica una pieza con coincidencia en el inventario."
+      );
+      return;
+    }
+
+    if (
+      numeroParteCorrecto !== "Sí" &&
+      numeroParteCorrecto !== "No"
+    ) {
+      setCotizacionError(
+        "Confirma si el número de parte mostrado es correcto."
+      );
+      return;
+    }
+
+    const pieza =
+      obtenerPiezaActualParaCotizacion();
+
+    if (!pieza) {
+      setCotizacionError(
+        numeroParteCorrecto === "No"
+          ? "Captura nombre, número de parte, cantidad y precio válidos para la refacción."
+          : "La refacción identificada no tiene datos suficientes para cotizar."
+      );
+      return;
+    }
+
+    setItemsCotizacion((itemsActuales) => {
+      const indiceExistente =
+        itemsActuales.findIndex(
+          (item) =>
+            item.numeroParte ===
+            pieza.numeroParte
+        );
+
+      if (indiceExistente >= 0) {
+        return itemsActuales.map(
+          (item, index) =>
+            index === indiceExistente
+              ? {
+                  ...item,
+                  cantidad:
+                    Number(item.cantidad || 0) +
+                    pieza.cantidad,
+                  subtotal:
+                    (Number(item.cantidad || 0) +
+                      pieza.cantidad) *
+                    Number(item.precioUnitario || 0),
+                }
+              : item
+        );
+      }
+
+      return [...itemsActuales, pieza];
+    });
+
+    setCotizacionError("");
+
+    // La identificación actual se conserva para que el usuario
+    // pueda revisar la pieza agregada y después seleccionar otra.
+    setNumeroParteCorrecto("");
+    setNumeroParteManual("");
+    setDescripcionParteManual("");
+    setCantidadParteManual(1);
+    setPrecioParteManual("");
+  }
+
+  function handleQuitarItemCotizacion(
+    numeroParte
+  ) {
+    setItemsCotizacion(
+      (itemsActuales) =>
+        itemsActuales.filter(
+          (item) =>
+            item.numeroParte !==
+            numeroParte
+        )
+    );
+  }
+
+  function handleCambiarCantidadItem(
+    numeroParte,
+    nuevaCantidad
+  ) {
+    const cantidad = Math.max(
+      1,
+      Number(nuevaCantidad) || 1
+    );
+
+    setItemsCotizacion(
+      (itemsActuales) =>
+        itemsActuales.map(
+          (item) =>
+            item.numeroParte ===
+            numeroParte
+              ? {
+                  ...item,
+                  cantidad,
+                  subtotal:
+                    cantidad *
+                    Number(item.precioUnitario || 0),
+                }
+              : item
+        )
+    );
+  }
+
+  function calcularTotalRefaccionesCotizacion() {
+    return itemsCotizacion.reduce(
+      (total, item) =>
+        total +
+        Number(item.precioUnitario || 0) *
+          Math.max(
+            1,
+            Number(item.cantidad) || 1
+          ),
+      0
+    );
+  }
+
+  // ==========================================
   // CREAR COTIZACIÓN
   // ==========================================
 
   async function handleCrearCotizacion() {
-    if (!result?.inventory) {
-      setCotizacionError(
-        "Primero debe existir una refacción identificada en el inventario."
-      );
-
-      return;
-    }
-
-    const nombre =
-      clienteNombre.trim();
-
-    const telefono =
-      clienteTelefono.trim();
-
-    const modelo =
-      modeloVehiculo.trim();
-
-    const anio =
-      anioVehiculo.trim();
-
-    const version =
-      versionVehiculo.trim();
-
-    const vin =
-      vinVehiculo.trim();
-
-    const cantidad =
-      Math.max(
-        1,
-        Number(
-          cantidadCotizacion
-        ) || 1
-      );
+    const nombre = clienteNombre.trim();
+    const telefono = clienteTelefono.trim();
+    const modelo = modeloVehiculo.trim();
+    const anio = anioVehiculo.trim();
+    const version = versionVehiculo.trim();
+    const vin = vinVehiculo.trim();
 
     if (
       !nombre ||
@@ -483,11 +684,16 @@ function App() {
       setCotizacionError(
         "Completa nombre, teléfono, modelo, año y versión del vehículo. El VIN es recomendado, pero no obligatorio."
       );
-
       return;
     }
 
-    // Las dos preguntas son obligatorias.
+    if (itemsCotizacion.length === 0) {
+      setCotizacionError(
+        "Agrega al menos una refacción a la cotización."
+      );
+      return;
+    }
+
     if (
       !interesaTomaCuenta ||
       !interesaPromociones
@@ -495,12 +701,10 @@ function App() {
       setCotizacionError(
         "Responde Sí o No en las dos preguntas de interés del cliente."
       );
-
       return;
     }
 
     setCreandoCotizacion(true);
-
     setCotizacionError("");
     setCotizacionCreada(null);
 
@@ -510,74 +714,45 @@ function App() {
           `${API_URL}/api/cotizaciones`,
           {
             method: "POST",
-
             headers: {
               "Content-Type":
                 "application/json",
             },
-
             body: JSON.stringify({
-              nombreCliente:
-                nombre,
-
-              telefonoCliente:
-                telefono,
-
-              modeloVehiculo:
-                modelo,
-
-              anioVehiculo:
-                anio,
-
-              versionVehiculo:
-                version,
-
-              vinVehiculo:
-                vin,
-
+              nombreCliente: nombre,
+              telefonoCliente: telefono,
+              modeloVehiculo: modelo,
+              anioVehiculo: anio,
+              versionVehiculo: version,
+              vinVehiculo: vin,
               operacionInstalacion:
                 operacionInstalacion.trim(),
-
-              tiempoInstalacion:
-                Number(
-                  tiempoInstalacion || 0
-                ),
-
+              tiempoInstalacion: Number(
+                tiempoInstalacion || 0
+              ),
               fuenteTiempo:
                 fuenteTiempoInstalacion.trim(),
-
               conceptosAdicionales:
                 conceptosAdicionales,
-
-              // NUEVO
               interesaTomaCuenta:
                 interesaTomaCuenta,
-
-              // NUEVO
               interesaPromociones:
                 interesaPromociones,
-
-              items: [
-                {
+              items: itemsCotizacion.map(
+                (item) => ({
                   numeroParte:
-                    result.inventory
-                      .numeroParte,
-
+                    item.numeroParte,
                   descripcion:
-                    result.inventory
-                      .descripcion ||
-                    result.description ||
-                    "",
-
-                  cantidad,
-
-                  precioUnitario:
-                    Number(
-                      result.inventory
-                        .precio || 0
-                    ),
-                },
-              ],
+                    item.descripcion,
+                  cantidad: Math.max(
+                    1,
+                    Number(item.cantidad) || 1
+                  ),
+                  precioUnitario: Number(
+                    item.precioUnitario || 0
+                  ),
+                })
+              ),
             }),
           }
         );
@@ -598,6 +773,8 @@ function App() {
       setCotizacionCreada(
         data.cotizacion
       );
+
+      setItemsCotizacion([]);
     } catch (error) {
       console.error(
         "Error al crear cotización:",
@@ -613,7 +790,8 @@ function App() {
       setCreandoCotizacion(false);
     }
   }
-    // ==========================================
+
+  // ==========================================
   // HISTORIAL
   // ==========================================
 
@@ -734,6 +912,8 @@ function App() {
       null
     );
 
+    setItemsCotizacion([]);
+
     setErrorMessage("");
 
     setStatus("idle");
@@ -783,6 +963,35 @@ function App() {
     ).format(
       Number(value || 0)
     );
+  }
+
+  function obtenerDatosPiezaCotizacion() {
+    if (itemsCotizacion.length > 0) {
+      const total =
+        calcularTotalRefaccionesCotizacion();
+
+      return {
+        cantidad: 1,
+        precioUnitario: total,
+        subtotal: total,
+        numeroParte:
+          itemsCotizacion
+            .map((item) => item.numeroParte)
+            .join(", "),
+      };
+    }
+
+    const pieza =
+      obtenerPiezaActualParaCotizacion();
+
+    return {
+      cantidad: pieza?.cantidad || 0,
+      precioUnitario:
+        pieza?.precioUnitario || 0,
+      subtotal: pieza?.subtotal || 0,
+      numeroParte:
+        pieza?.numeroParte || "",
+    };
   }
 
   function obtenerDatosInstalacion(
@@ -1296,6 +1505,321 @@ function App() {
 
                   </dl>
 
+                  {/* ================================= */}
+                  {/* VALIDACIÓN DEL NÚMERO DE PARTE */}
+                  {/* ================================= */}
+
+                  <div
+                    style={{
+                      marginTop: 18,
+                      padding: 16,
+                      borderRadius: 12,
+                      background: "#f8fafc",
+                      border: "1px solid #dbe3ec",
+                    }}
+                  >
+                    <h4
+                      style={{
+                        marginTop: 0,
+                        marginBottom: 8,
+                        color: "#123f73",
+                      }}
+                    >
+                      ¿El número de parte mostrado es correcto?
+                    </h4>
+
+                    <p
+                      style={{
+                        marginTop: 0,
+                        marginBottom: 12,
+                        color: "#475569",
+                      }}
+                    >
+                      Confirma el número de parte antes de generar la cotización.
+                    </p>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className={
+                          numeroParteCorrecto === "Sí"
+                            ? "primary-button"
+                            : "secondary-button"
+                        }
+                        onClick={() => {
+                          setNumeroParteCorrecto("Sí");
+                          setNumeroParteManual("");
+                          setCantidadParteManual(1);
+                          setDescripcionParteManual(
+                            String(
+                              result.inventory.descripcion ||
+                                result.description ||
+                                ""
+                            )
+                          );
+                          setPrecioParteManual(
+                            String(
+                              result.inventory.precio ||
+                                ""
+                            )
+                          );
+                        }}
+                        disabled={creandoCotizacion}
+                      >
+                        Sí, es correcto
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          numeroParteCorrecto === "No"
+                            ? "primary-button"
+                            : "secondary-button"
+                        }
+                        onClick={() => {
+                          setNumeroParteCorrecto("No");
+                          setCantidadParteManual(1);
+                          setPrecioParteManual("");
+                        }}
+                        disabled={creandoCotizacion}
+                      >
+                        No, es otro número de parte
+                      </button>
+                    </div>
+
+                    {numeroParteCorrecto === "Sí" && (
+                      <div
+                        style={{
+                          marginTop: 16,
+                          padding: 14,
+                          borderRadius: 10,
+                          background: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                        }}
+                      >
+                        <strong
+                          style={{
+                            display: "block",
+                            marginBottom: 12,
+                            color: "#123f73",
+                          }}
+                        >
+                          Ajusta los datos para cotizar esta refacción
+                        </strong>
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "repeat(auto-fit, minmax(220px, 1fr))",
+                            gap: 12,
+                          }}
+                        >
+                          <label>
+                            Nombre / descripción
+
+                            <input
+                              type="text"
+                              value={descripcionParteManual}
+                              onChange={(event) =>
+                                setDescripcionParteManual(
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Ejemplo: Collarín de embrague"
+                              disabled={creandoCotizacion}
+                              style={{
+                                width: "100%",
+                                marginTop: 6,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                          </label>
+
+                          <label>
+                            Precio unitario
+
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={precioParteManual}
+                              onChange={(event) =>
+                                setPrecioParteManual(
+                                  event.target.value
+                                )
+                              }
+                              placeholder="0.00"
+                              disabled={creandoCotizacion}
+                              style={{
+                                width: "100%",
+                                marginTop: 6,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        <p
+                          style={{
+                            marginBottom: 0,
+                            marginTop: 12,
+                            color: "#475569",
+                          }}
+                        >
+                          El número de parte se mantiene validado. Puedes ajustar el nombre y el precio antes de agregar la refacción a la cotización.
+                        </p>
+                      </div>
+                    )}
+
+                    {numeroParteCorrecto === "No" && (
+                      <div
+                        style={{
+                          marginTop: 16,
+                          padding: 14,
+                          borderRadius: 10,
+                          background: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                        }}
+                      >
+                        <strong
+                          style={{
+                            display: "block",
+                            marginBottom: 12,
+                            color: "#123f73",
+                          }}
+                        >
+                          Captura los datos correctos de la refacción
+                        </strong>
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                              "repeat(auto-fit, minmax(180px, 1fr))",
+                            gap: 12,
+                          }}
+                        >
+                          <label>
+                            Nombre / descripción
+
+                            <input
+                              type="text"
+                              value={descripcionParteManual}
+                              onChange={(event) =>
+                                setDescripcionParteManual(
+                                  event.target.value
+                                )
+                              }
+                              placeholder="Ejemplo: Filtro de aceite"
+                              disabled={creandoCotizacion}
+                              style={{
+                                width: "100%",
+                                marginTop: 6,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                          </label>
+
+                          <label>
+                            Número de parte
+
+                            <input
+                              type="text"
+                              value={numeroParteManual}
+                              onChange={(event) =>
+                                setNumeroParteManual(
+                                  event.target.value.toUpperCase()
+                                )
+                              }
+                              placeholder="Ejemplo: 12345-00A00-000"
+                              disabled={creandoCotizacion}
+                              style={{
+                                width: "100%",
+                                marginTop: 6,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                          </label>
+
+                          <label>
+                            Cantidad
+
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={cantidadParteManual}
+                              onChange={(event) =>
+                                setCantidadParteManual(
+                                  event.target.value
+                                )
+                              }
+                              disabled={creandoCotizacion}
+                              style={{
+                                width: "100%",
+                                marginTop: 6,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                          </label>
+
+                          <label>
+                            Precio unitario
+
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={precioParteManual}
+                              onChange={(event) =>
+                                setPrecioParteManual(
+                                  event.target.value
+                                )
+                              }
+                              placeholder="0.00"
+                              disabled={creandoCotizacion}
+                              style={{
+                                width: "100%",
+                                marginTop: 6,
+                                padding: "10px 12px",
+                                borderRadius: 8,
+                                border: "1px solid #cbd5e1",
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        <p
+                          style={{
+                            marginBottom: 0,
+                            marginTop: 12,
+                            color: "#92400e",
+                            fontWeight: 700,
+                          }}
+                        >
+                          Estos datos serán los que se utilicen en la cotización. Valida la información en el catálogo Suzuki antes de confirmar.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="barcode-section">
 
                     <h4>
@@ -1304,9 +1828,9 @@ function App() {
 
                     <Barcode
                       value={
-                        result
-                          .inventory
-                          .numeroParte
+                        numeroParteCorrecto === "No"
+                          ? numeroParteManual || result.inventory.numeroParte
+                          : result.inventory.numeroParte
                       }
                     />
 
@@ -1340,6 +1864,171 @@ function App() {
                     en SQLite.
                   </p>
 
+                </div>
+              )}
+
+              {/* ================================= */}
+              {/* REFACCIONES AGREGADAS */}
+              {/* ================================= */}
+
+              {itemsCotizacion.length > 0 && (
+                <div
+                  className="inventory-match"
+                  style={{
+                    marginTop: 18,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ marginBottom: 4 }}>
+                        Refacciones de la cotización
+                      </h4>
+                      <p
+                        style={{
+                          margin: 0,
+                          color: "#64748b",
+                        }}
+                      >
+                        Agrega todas las piezas que necesite el cliente antes de crear el folio.
+                      </p>
+                    </div>
+                    <strong
+                      style={{
+                        color: "#123f73",
+                        fontSize: 18,
+                      }}
+                    >
+                      {formatPrice(
+                        calcularTotalRefaccionesCotizacion()
+                      )}
+                    </strong>
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    {itemsCotizacion.map((item) => (
+                      <div
+                        key={item.numeroParte}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "minmax(220px, 1fr) 110px 130px auto",
+                          gap: 12,
+                          alignItems: "center",
+                          padding: 12,
+                          border: "1px solid #dbe3ec",
+                          borderRadius: 10,
+                          background: "#ffffff",
+                        }}
+                      >
+                        <div>
+                          <strong
+                            style={{
+                              display: "block",
+                              color: "#123f73",
+                            }}
+                          >
+                            {item.descripcion}
+                          </strong>
+                          <span
+                            style={{
+                              color: "#64748b",
+                              fontSize: 13,
+                            }}
+                          >
+                            No. parte: {item.numeroParte} · Precio: {formatPrice(item.precioUnitario)}
+                          </span>
+                        </div>
+
+                        <label
+                          style={{
+                            fontSize: 13,
+                            color: "#475569",
+                          }}
+                        >
+                          Cantidad
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={item.cantidad}
+                            onChange={(event) =>
+                              handleCambiarCantidadItem(
+                                item.numeroParte,
+                                event.target.value
+                              )
+                            }
+                            disabled={creandoCotizacion}
+                            style={{
+                              width: "100%",
+                              marginTop: 4,
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              border: "1px solid #cbd5e1",
+                            }}
+                          />
+                        </label>
+
+                        <div>
+                          <span
+                            style={{
+                              display: "block",
+                              fontSize: 13,
+                              color: "#64748b",
+                            }}
+                          >
+                            Subtotal
+                          </span>
+                          <strong>
+                            {formatPrice(
+                              Number(item.cantidad || 0) *
+                                Number(item.precioUnitario || 0)
+                            )}
+                          </strong>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() =>
+                            handleQuitarItemCotizacion(
+                              item.numeroParte
+                            )
+                          }
+                          disabled={creandoCotizacion}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 12,
+                      background: "#eff6ff",
+                      border: "1px solid #bfdbfe",
+                      borderRadius: 9,
+                      color: "#123f73",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Para agregar otra pieza, selecciona una nueva imagen, identifícala y pulsa “Agregar pieza a la cotización”.
+                  </div>
                 </div>
               )}
 
@@ -1562,37 +2251,39 @@ function App() {
                       />
                     </label>
 
-                    <label>
-                      Cantidad
+                    {numeroParteCorrecto !== "No" && (
+                      <label>
+                        Cantidad
 
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={
-                          cantidadCotizacion
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setCantidadCotizacion(
-                            event.target.value
-                          )
-                        }
-                        disabled={
-                          creandoCotizacion
-                        }
-                        style={{
-                          width: "100%",
-                          marginTop: 6,
-                          padding:
-                            "10px 12px",
-                          borderRadius: 8,
-                          border:
-                            "1px solid #cbd5e1",
-                        }}
-                      />
-                    </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={
+                            cantidadCotizacion
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setCantidadCotizacion(
+                              event.target.value
+                            )
+                          }
+                          disabled={
+                            creandoCotizacion
+                          }
+                          style={{
+                            width: "100%",
+                            marginTop: 6,
+                            padding:
+                              "10px 12px",
+                            borderRadius: 8,
+                            border:
+                              "1px solid #cbd5e1",
+                          }}
+                        />
+                      </label>
+                    )}
 
                   </div>
 
@@ -1811,16 +2502,7 @@ function App() {
                     </div>
 
                     {!obtenerDatosInstalacion(
-                      Number(
-                        result.inventory.precio ||
-                          0
-                      ) *
-                        Math.max(
-                          1,
-                          Number(
-                            cantidadCotizacion
-                          ) || 1
-                        )
+                      obtenerDatosPiezaCotizacion().subtotal
                     ).tiempoValido && (
                       <p
                         style={{
@@ -1837,16 +2519,7 @@ function App() {
                     )}
 
                     {obtenerDatosInstalacion(
-                      Number(
-                        result.inventory.precio ||
-                          0
-                      ) *
-                        Math.max(
-                          1,
-                          Number(
-                            cantidadCotizacion
-                          ) || 1
-                        )
+                      obtenerDatosPiezaCotizacion().subtotal
                     ).tiempoValido && (
                       <div
                         style={{
@@ -1860,16 +2533,7 @@ function App() {
                           <strong>
                             {formatPrice(
                               obtenerDatosInstalacion(
-                                Number(
-                                  result.inventory
-                                    .precio || 0
-                                ) *
-                                  Math.max(
-                                    1,
-                                    Number(
-                                      cantidadCotizacion
-                                    ) || 1
-                                  )
+                                obtenerDatosPiezaCotizacion().subtotal
                               ).manoObra
                             )}
                           </strong>
@@ -1880,16 +2544,7 @@ function App() {
                           <strong>
                             {formatPrice(
                               obtenerDatosInstalacion(
-                                Number(
-                                  result.inventory
-                                    .precio || 0
-                                ) *
-                                  Math.max(
-                                    1,
-                                    Number(
-                                      cantidadCotizacion
-                                    ) || 1
-                                  )
+                                obtenerDatosPiezaCotizacion().subtotal
                               ).totalInstalado
                             )}
                           </strong>
@@ -2159,7 +2814,7 @@ function App() {
                   </div>
 
                   {/* ================================= */}
-                  {/* BOTÓN CREAR COTIZACIÓN */}
+                  {/* AGREGAR REFACCIÓN */}
                   {/* ================================= */}
 
                   <div
@@ -2178,37 +2833,41 @@ function App() {
                       type="button"
                       className="primary-button"
                       onClick={
-                        handleCrearCotizacion
+                        handleAgregarPiezaCotizacion
                       }
                       disabled={
                         creandoCotizacion
                       }
                     >
-                      {
-                        creandoCotizacion
-                          ? "Creando cotización..."
-                          : "Crear cotización"
+                      Agregar pieza a la cotización
+                    </button>
+
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={
+                        handleCrearCotizacion
                       }
+                      disabled={
+                        creandoCotizacion ||
+                        itemsCotizacion.length === 0
+                      }
+                    >
+                      {creandoCotizacion
+                        ? "Generando cotización..."
+                        : "Generar cotización"}
                     </button>
 
                     <span>
-                      Total estimado:{" "}
-
+                      Piezas agregadas:{" "}
+                      <strong>
+                        {itemsCotizacion.length}
+                      </strong>
+                      {" · "}
+                      Total refacciones:{" "}
                       <strong>
                         {formatPrice(
-                          Number(
-                            result
-                              .inventory
-                              .precio ||
-                            0
-                          ) *
-                            Math.max(
-                              1,
-                              Number(
-                                cantidadCotizacion
-                              ) ||
-                                1
-                            )
+                          calcularTotalRefaccionesCotizacion()
                         )}
                       </strong>
                     </span>
